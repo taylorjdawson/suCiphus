@@ -1,0 +1,9 @@
+[submodule "packages/susichiphus-suapp/lib/forge-std"]
+	path = packages/susichiphus-suapp/lib/forge-std
+	url = https://github.com/foundry-rs/forge-std
+[submodule "packages/susichiphus-suapp/lib/suave-std"]
+	path = packages/susichiphus-suapp/lib/suave-std
+	url = https://github.com/flashbots/suave-std
+[submodule "packages/suciphus-suapp/lib/suave-std"]
+	path = packages/suciphus-suapp/lib/suave-std
+	url = https://github.com/flashbots/suave-std

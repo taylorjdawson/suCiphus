@@ -1,12 +1,14 @@
 {
-  "name": "susiciphus",
+  "name": "suciphus",
   "private": true,
   "scripts": {
     "build": "turbo build",
     "dev": "turbo dev",
     "lint": "turbo lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "deploy-forge": "turbo run deploy-forge --filter=forge"
+    "forge:deploy": "turbo run forge:deploy --filter=forge",
+    "forge:test": "dotenv -- forge test --root packages/suciphus-suapp",
+    "forge:test-verbose": "dotenv -- forge test --ffi -vvvv --root packages/suciphus-suapp"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",

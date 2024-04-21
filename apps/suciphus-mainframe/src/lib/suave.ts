@@ -106,7 +106,7 @@ export const sendTransaction = async (
     chainId: 16813125,
     data: encodeFunctionData({
       abi: OnChainStateAbi,
-      functionName: "example",
+      functionName: "chat",
       args: [], // Add this line
     }),
     nonce,

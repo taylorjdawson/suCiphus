@@ -1,8 +1,10 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "globalDependencies": ["**/.env.*local"],
+  "globalDotEnv": [".env"],
   "pipeline": {
     "build": {
+      "cache": false,
       "dependsOn": ["^build"],
       "outputs": [".next/**", "!.next/cache/**"]
     },
@@ -13,7 +15,11 @@
       "cache": false,
       "persistent": true
     },
-    "deploy-forge": {
+    "forge:deploy": {
+      "dependsOn": ["build"],
+      "outputs": []
+    },
+    "forge:test": {
       "dependsOn": ["build"],
       "outputs": []
     }
