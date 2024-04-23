@@ -9,4 +9,4 @@ export interface Thread {
   createdAt: string
 }
 
-export type ThreadRequest = Database["public"]["Tables"]["threads"]["Insert"]
+export type NewThreadRequest = Database["public"]["Tables"]["threads"]["Insert"]
