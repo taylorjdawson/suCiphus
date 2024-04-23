@@ -78,6 +78,9 @@ importers:
         specifier: ^3.22.4
         version: 3.22.4
     devDependencies:
+      '@dotenv-run/cli':
+        specifier: ^1.3.5
+        version: 1.3.5
       '@ianvs/prettier-plugin-sort-imports':
         specifier: ^4.1.1
         version: 4.2.0(prettier@3.2.5)
@@ -629,6 +632,25 @@ packages:
     engines: {node: '>=12'}
     dependencies:
       '@jridgewell/trace-mapping': 0.3.9
+    dev: true
+
+  /@dotenv-run/cli@1.3.5:
+    resolution: {integrity: sha512-UpY4IYvbIDowfzT8Byzz3PbJ02PAxOlipKbwqxBxwic7Tf7lwcSSL4cGAoOmDPj8yd2mdcq7RoHfVaajgsUR8Q==}
+    hasBin: true
+    dependencies:
+      '@dotenv-run/core': 1.3.5
+      chalk: 4.1.2
+      cross-spawn: 7.0.3
+      minimist: 1.2.8
+    dev: true
+
+  /@dotenv-run/core@1.3.5:
+    resolution: {integrity: sha512-jwXSX/r4VIGUOd/xqRjD5QUYRhKhKOmhhFSPDaIOsajFL+LVYBGADTFcakZ5O9x2BOGxDjIVUJzIE8jTpJ29JA==}
+    dependencies:
+      chalk: 4.1.2
+      dotenv: 16.4.5
+      dotenv-expand: 10.0.0
+      find-up: 5.0.0
     dev: true
 
   /@eslint-community/eslint-utils@4.4.0(eslint@8.57.0):
@@ -2959,8 +2981,18 @@ packages:
       no-case: 2.3.2
     dev: true
 
+  /dotenv-expand@10.0.0:
+    resolution: {integrity: sha512-GopVGCpVS1UKH75VKHGuQFqS1Gusej0z4FyQkPdwjil2gNIv+LNsqBlboOzpJFZKVT95GkCyWJbBSdFEFUWI2A==}
+    engines: {node: '>=12'}
+    dev: true
+
   /dotenv@16.0.3:
     resolution: {integrity: sha512-7GO6HghkA5fYG9TYnNxi14/7K9f5occMlp3zXAuSxn7CKCxt9xbNWG7yF8hTCSUchlfWSe3uLmlPfigevRItzQ==}
+    engines: {node: '>=12'}
+    dev: true
+
+  /dotenv@16.4.5:
+    resolution: {integrity: sha512-ZmdL2rui+eB2YwhsWzjInR8LldtZHGDoQ1ugH85ppHKwpUHL7j7rN0Ti9NCnGiQbhaZ11FpR+7ao1dNsmduNUg==}
     engines: {node: '>=12'}
     dev: true
 
