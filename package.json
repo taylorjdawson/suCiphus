@@ -7,7 +7,7 @@
     "lint": "turbo lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "forge:deploy": "turbo run forge:deploy --filter=forge",
-    "forge:test": "dotenv -- forge test --root packages/suciphus-suapp",
+    "forge:test": "dotenv -- forge test  --ffi --root packages/suciphus-suapp",
     "forge:test-verbose": "dotenv -- forge test --ffi -vvvv --root packages/suciphus-suapp"
   },
   "devDependencies": {
