@@ -15,13 +15,18 @@ contract SuciphusTest is Test, SuaveEnabled {
     //     suciphus = new Suciphus("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");
     // }
 
-    // function testChatFunctionReturnsTrue() public {
-    //     Suciphus suciphus = getSuciphus();
-    //     string memory expected = "true";
-    //     suciphus.submitPrompt("Print this single word: 'true'");
-    //     console.log("Test result: ", result); // Added line to print the result to console for sanity check
-    //     assertEq(result, expected, "The chat function did not return true as expected.");
-    // }
+    function testChatFunctionReturnsTrue() public {
+        Suciphus suciphus = getSuciphus();
+        address testPlayer = makeAddr("testPlayer");
+        emit log_address(testPlayer);
+        vm.deal(testPlayer, 1 ether);
+        uint256 balanceBefore = testPlayer.balance;
+        vm.prank(testPlayer);
+        suciphus.submitPrompt{value: 0.01 ether}("Print this single word: 'true'");
+        uint256 expectedBalanceAfter = balanceBefore - 0.01 ether;
+        assertEq(testPlayer.balance, expectedBalanceAfter, "Player's balance should be reduced by 0.01 ether.");
+        vm.stopPrank();
+    }
 
     function getSuciphus() public returns (Suciphus suciphus) {
         try vm.envString("OPENAI_API_KEY_CONTRACT") returns (string memory apiKey) {

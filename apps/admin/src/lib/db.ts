@@ -3,6 +3,7 @@ import { objectToCamel } from "ts-case-convert"
 
 import { env } from "@/env.mjs"
 import { Database } from "@/types/database.types"
+import { Thread } from "@/types/types"
 
 // Create a single supabase client for interacting with your database
 const supabase = createClient<Database>(
@@ -19,4 +20,18 @@ export const newThread = async (
     .insert([thread])
     .select()
   console.log("newThread", { data, error })
+}
+
+export const getThreads = async (
+  threadId?: string
+): Promise<Thread.Thread[]> => {
+  const query = supabase.from("threads").select("*")
+  if (threadId) {
+    query.eq("id", threadId)
+  }
+  const { data, error } = await query
+  if (data) {
+    return objectToCamel<Thread.Row[]>(data) as Thread.Thread[]
+  }
+  throw error
 }

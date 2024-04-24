@@ -4,6 +4,7 @@ pragma solidity ^0.8.19;
 import "suave-std/suavelib/Suave.sol";
 import "solady/src/utils/JSONParserLib.sol";
 import "forge-std/console.sol";
+import "forge-std/Vm.sol";
 
 contract Assistant {
     using JSONParserLib for *;
@@ -33,19 +34,21 @@ contract Assistant {
         request.headers[1] = "Content-Type: application/json";
         request.headers[2] = "OpenAI-Beta: assistants=v2";
         request.body = abi.encodePacked('{"assistant_id": "', assistantId, '", "thread": {"messages": [{"role": "user", "content": "', message, '"}]}}');
-        console.log("request", string(request.body));
+
         bytes memory response = Suave.doHTTPRequest(request);
-        console.log("response");//, string(response));
+
         JSONParserLib.Item memory item = string(response).parse();
         string memory runId = item.at('"id"').value();
         string memory threadId = item.at('"thread_id"').value();
+        console.log("threadId", threadId);
         threadIds[player] = threadId;
-
+        saveThread(player, threadId);
         return runId;
     }
 
     function createMessageAndRun(address player, string memory message) public onlyOwner returns (string memory) {
         string memory threadId = threadIds[player];
+
         if (bytes(threadId).length == 0) {
             return createThreadAndRun(player, message);
         } else {
@@ -102,5 +105,33 @@ contract Assistant {
         }
 
         return results;
+    }
+
+    function saveThread(address player, string memory threadId) public onlyOwner {
+        Suave.HttpRequest memory request;
+        request.method = "POST";
+        // @todo: change to production url
+        request.url = "http://localhost:3000/api/thread";
+        request.headers = new string[](1);
+        request.headers[0] = "Content-Type: application/json";
+        request.body = abi.encodePacked('{"player":"', toString(player), '","thread_id":', threadId, '}');
+
+        Suave.doHTTPRequest(request);
+    }
+
+    function toString(address _addr) internal pure returns (string memory) {
+        bytes32 value = bytes32(uint256(uint160(_addr)));
+        bytes memory alphabet = "0123456789abcdef";
+         
+        bytes memory str = new bytes(42);
+        str[0] = '0';
+        str[1] = 'x';
+         
+        for (uint256 i = 0; i < 20; i++) {
+            str[2 + i * 2] = alphabet[uint8(value[i + 12] >> 4)];
+            str[3 + i * 2] = alphabet[uint8(value[i + 12] & 0x0f)];
+        }
+         
+        return string(str);
     }
 }

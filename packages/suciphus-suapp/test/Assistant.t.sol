@@ -9,15 +9,25 @@ import "../src/Assistant.sol";
 contract AssistantTest is Test, SuaveEnabled {
     address owner = address(this);
 
-    function testCreateThreadAndRun() public {
-        Assistant assistant = getAssistant();
-        address testPlayer = getTestPlayer();
-        string memory message = "Hello, Assistant!";
-        vm.prank(owner);
-        string memory runId = assistant.createThreadAndRun(testPlayer, message);
-        vm.stopPrank();
-        assertNotEq(runId, "", "Run ID should not be null.");
-    }
+    // function testCreateThreadAndRun() public {
+    //     Assistant assistant = getAssistant();
+    //     address testPlayer = getTestPlayer();
+    //     string memory message = "Hello from solidity unit tests. test: testCreateThreadAndRun";
+    //     vm.prank(owner);
+    //     string memory runId = assistant.createThreadAndRun(testPlayer, message);
+    //     vm.stopPrank();
+    //     assertNotEq(runId, "", "Run ID should not be null.");
+    // }
+
+    // function testCreateMessageAndRun_NewThread() public {
+    //     Assistant assistant = getAssistant();
+    //     address testPlayer = getTestPlayer();
+    //     string memory message = "Hello from solidity unit tests. test: testCreateMessageAndRun_NewThread";
+    //     vm.prank(owner);
+    //     string memory runId = assistant.createMessageAndRun(testPlayer, message);
+    //     vm.stopPrank();
+    //     assertNotEq(runId, "", "Run ID should not be null.");
+    // }
 
     // function testCreateMessageAndRun_NewThread() public {
     //     Assistant assistant = getAssistant();

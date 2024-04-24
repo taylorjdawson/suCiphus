@@ -3,5 +3,7 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode
 }) {
-  return <div>{children}</div>
+  return (
+    <main className="min-h-screen bg-background antialiased">{children}</main>
+  )
 }
