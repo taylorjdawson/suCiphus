@@ -14,12 +14,10 @@ const supabase = createClient<Database>(
 export const newThread = async (
   thread: Database["public"]["Tables"]["threads"]["Insert"]
 ) => {
-  console.log({ thread })
   const { data, error } = await supabase
     .from("threads")
     .insert([thread])
     .select()
-  console.log("newThread", { data, error })
 }
 
 export const getThreads = async (

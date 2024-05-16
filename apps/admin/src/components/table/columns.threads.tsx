@@ -6,6 +6,7 @@ import { ColumnDef } from "@tanstack/react-table"
 import { MoreHorizontal } from "lucide-react"
 
 import { Thread } from "@/types/types"
+import { truncateId } from "@/lib/utils"
 
 import { Button } from "../ui/button"
 import {
@@ -23,8 +24,8 @@ export const columns: ColumnDef<Thread.Thread>[] = [
     header: "Thread ID",
     cell: ({ row }) => {
       return (
-        <Link href={`/admin/messages/${row.getValue("threadId")}`}>
-          {row.getValue("threadId")}
+        <Link href={`/admin/threads/${row.getValue("threadId")}`}>
+          {truncateId(row.getValue("threadId"))}
         </Link>
       )
     },

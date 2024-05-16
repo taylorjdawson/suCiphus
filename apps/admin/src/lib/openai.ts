@@ -13,3 +13,16 @@ export const getRuns = async (threadId: string) => {
   const threadRuns = await openai.beta.threads.runs.list(threadId)
   return threadRuns
 }
+
+export const getRun = async (threadId: string, runId: string) => {
+  const [run, runSteps] = await Promise.all([
+    openai.beta.threads.runs.retrieve(threadId, runId),
+    openai.beta.threads.runs.steps.list(threadId, runId),
+  ])
+  return { run, runSteps: runSteps.data }
+}
+
+export const getThread = async (threadId: string) => {
+  const thread = await openai.beta.threads.retrieve(threadId)
+  return thread
+}

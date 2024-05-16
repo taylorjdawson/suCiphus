@@ -1,3 +1,5 @@
+import Link from "next/link"
+
 import { Thread } from "@/types/types"
 import { getThreads } from "@/lib/db"
 import { columns } from "@/components/table/columns.threads"
@@ -9,7 +11,7 @@ export default async function Admin() {
   return (
     <main className="flex h-screen items-center justify-center">
       <div className="container flex max-w-[64rem] flex-col items-center gap-4 text-center">
-        <DataTable columns={columns} data={threads} />
+        <Link href="admin/threads">Threads</Link>
       </div>
     </main>
   )
