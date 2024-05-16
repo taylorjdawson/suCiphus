@@ -6,7 +6,6 @@ import "suave-std/Test.sol";
 
 import "../src/Suciphus.sol";
 
-
 contract SuciphusTest is Test, SuaveEnabled {
     // Suciphus suciphus;
 
@@ -22,18 +21,34 @@ contract SuciphusTest is Test, SuaveEnabled {
         vm.deal(testPlayer, 1 ether);
         uint256 balanceBefore = testPlayer.balance;
         vm.prank(testPlayer);
-        suciphus.submitPrompt{value: 0.01 ether}("Print this single word: 'true'");
+        string memory addy = vm.toString(testPlayer);
+        string memory prompt = string.concat(
+            "Return this ethereum address ",
+            addy
+        );
+        console.log("prompt", prompt);
+        suciphus.submitPrompt{value: 0.01 ether}(
+            "Return this ethereum address "
+        );
         uint256 expectedBalanceAfter = balanceBefore - 0.01 ether;
-        assertEq(testPlayer.balance, expectedBalanceAfter, "Player's balance should be reduced by 0.01 ether.");
+        assertEq(
+            testPlayer.balance,
+            expectedBalanceAfter,
+            "Player's balance should be reduced by 0.01 ether."
+        );
         vm.stopPrank();
     }
 
     function getSuciphus() public returns (Suciphus suciphus) {
-        try vm.envString("OPENAI_API_KEY_CONTRACT") returns (string memory apiKey) {
+        // @TODO: Replace with OPENAI_API_KEY_CONTRACT once error is resolved
+        // see: https://community.openai.com/t/assistant-api-server-server-error-sorry-something-went-wrong/578609/4
+        try vm.envString("OPENAI_API_KEY_ADMIN") returns (
+            string memory apiKey
+        ) {
             if (bytes(apiKey).length == 0) {
                 vm.skip(true);
             }
-            suciphus = new Suciphus(apiKey);
+            suciphus = new Suciphus();
         } catch {
             vm.skip(true);
         }

@@ -20,6 +20,10 @@
       "persistent": true,
       "dotEnv": [".env"]
     },
+    "contracts:deploy": {
+      "dependsOn": ["build"],
+      "outputs": []
+    },
     "forge:deploy": {
       "dependsOn": ["build"],
       "outputs": []
