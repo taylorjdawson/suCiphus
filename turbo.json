@@ -6,11 +6,17 @@
     "build": {
       "cache": false,
       "dependsOn": ["^build"],
-      "outputs": [".next/**", "!.next/cache/**"]
+      "outputs": [".next/**", "!.next/cache/**"],
+      "dotEnv": [".env"]
     },
     "admin#build": {
       "dependsOn": ["^build"],
-      "env": ["SUPABASE_URL", "SUPABASE_SERVICE_KEY", "NEXT_PUBLIC_APP_URL"]
+      "env": [
+        "SUPABASE_URL",
+        "SUPABASE_SERVICE_KEY",
+        "NEXT_PUBLIC_APP_URL",
+        "OPENAI_API_KEY"
+      ]
     },
     "lint": {
       "dependsOn": ["^lint"]
