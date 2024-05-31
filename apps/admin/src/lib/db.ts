@@ -23,13 +23,18 @@ export const newThread = async (
 export const getThreads = async (
   threadId?: string
 ): Promise<Thread.Thread[]> => {
-  const query = supabase.from("threads").select("*")
-  if (threadId) {
-    query.eq("id", threadId)
-  }
-  const { data, error } = await query
-  if (data) {
+  try {
+    const query = supabase.from("threads").select("*")
+    if (threadId) {
+      query.eq("id", threadId)
+    }
+    const { data, error } = await query
+    if (error) {
+      throw error
+    }
     return objectToCamel<Thread.Row[]>(data) as Thread.Thread[]
+  } catch (error) {
+    console.error("Failed to fetch threads:", error)
+    throw error
   }
-  throw error
 }

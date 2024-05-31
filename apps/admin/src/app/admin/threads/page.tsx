@@ -1,4 +1,3 @@
-import { Thread } from "@/types/types"
 import { getThreads } from "@/lib/db"
 import { columns } from "@/components/table/columns.threads"
 import { DataTable } from "@/components/table/data-table"
