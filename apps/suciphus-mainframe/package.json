@@ -1,5 +1,5 @@
 {
-  "name": "next-entree",
+  "name": "suciphus-mainframe",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -25,6 +25,7 @@
     "tailwind-merge": "^2.2.1",
     "tailwindcss-animate": "^1.0.7",
     "utils": "link:@flashbots/suave-viem/chains/utils",
+    "viem": "^2.9.25",
     "zod": "^3.22.4"
   },
   "devDependencies": {

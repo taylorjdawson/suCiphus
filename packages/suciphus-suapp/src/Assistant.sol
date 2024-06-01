@@ -4,6 +4,7 @@ pragma solidity ^0.8.19;
 import "suave-std/suavelib/Suave.sol";
 import "solady/src/utils/JSONParserLib.sol";
 import "forge-std/console.sol";
+import "forge-std/Vm.sol";
 
 contract Assistant {
     using JSONParserLib for *;
@@ -18,13 +19,20 @@ contract Assistant {
         _;
     }
 
-    constructor(string memory _apiKey, string memory _assistantId, address _owner) {
+    constructor(
+        string memory _apiKey,
+        string memory _assistantId,
+        address _owner
+    ) {
         apiKey = _apiKey;
         assistantId = _assistantId;
         owner = _owner;
     }
 
-    function createThreadAndRun(address player, string memory message) public onlyOwner returns (string memory) {
+    function createThreadAndRun(
+        address player,
+        string memory message
+    ) public onlyOwner returns (string memory) {
         Suave.HttpRequest memory request;
         request.method = "POST";
         request.url = "https://api.openai.com/v1/threads/runs";
@@ -32,47 +40,80 @@ contract Assistant {
         request.headers[0] = string.concat("Authorization: Bearer ", apiKey);
         request.headers[1] = "Content-Type: application/json";
         request.headers[2] = "OpenAI-Beta: assistants=v2";
-        request.body = abi.encodePacked('{"assistant_id": "', assistantId, '", "thread": {"messages": [{"role": "user", "content": "', message, '"}]}}');
-        console.log("request", string(request.body));
+        request.body = abi.encodePacked(
+            '{"assistant_id": "',
+            assistantId,
+            '", "thread": {"messages": [{"role": "user", "content": "',
+            message,
+            '"}]}}'
+        );
+
         bytes memory response = Suave.doHTTPRequest(request);
-        console.log("response");//, string(response));
+        console.log(string(response));
         JSONParserLib.Item memory item = string(response).parse();
         string memory runId = item.at('"id"').value();
         string memory threadId = item.at('"thread_id"').value();
+        console.log("threadId", threadId);
         threadIds[player] = threadId;
-
+        saveThread(player, threadId);
+        console.log("runId", runId);
         return runId;
     }
 
-    function createMessageAndRun(address player, string memory message) public onlyOwner returns (string memory) {
+    function createMessageAndRun(
+        address player,
+        string memory message
+    ) public onlyOwner returns (string memory) {
         string memory threadId = threadIds[player];
+
         if (bytes(threadId).length == 0) {
             return createThreadAndRun(player, message);
         } else {
             Suave.HttpRequest memory request;
             request.method = "POST";
-            request.url = string.concat("https://api.openai.com/v1/threads/", threadId, "/messages");
+            request.url = string.concat(
+                "https://api.openai.com/v1/threads/",
+                threadId,
+                "/messages"
+            );
             request.headers = new string[](2);
             request.headers[0] = "Content-Type: application/json";
-            request.headers[1] = string.concat("Authorization: Bearer ", apiKey);
-            request.body = abi.encodePacked('{"role": "user", "content": "', message, '"}');
+            request.headers[1] = string.concat(
+                "Authorization: Bearer ",
+                apiKey
+            );
+            request.body = abi.encodePacked(
+                '{"role": "user", "content": "',
+                message,
+                '"}'
+            );
 
             Suave.doHTTPRequest(request);
             return createRun(player);
         }
     }
 
-    function createRun(address player) public onlyOwner returns (string memory) {
+    function createRun(
+        address player
+    ) public onlyOwner returns (string memory) {
         string memory threadId = threadIds[player];
         require(bytes(threadId).length > 0, "Thread ID not found for player");
 
         Suave.HttpRequest memory request;
         request.method = "POST";
-        request.url = string.concat("https://api.openai.com/v1/threads/", threadId, "/runs");
+        request.url = string.concat(
+            "https://api.openai.com/v1/threads/",
+            threadId,
+            "/runs"
+        );
         request.headers = new string[](2);
         request.headers[0] = "Content-Type: application/json";
         request.headers[1] = string.concat("Authorization: Bearer ", apiKey);
-        request.body = abi.encodePacked('{"assistant_id": "', assistantId, '"}');
+        request.body = abi.encodePacked(
+            '{"assistant_id": "',
+            assistantId,
+            '"}'
+        );
 
         bytes memory response = Suave.doHTTPRequest(request);
         JSONParserLib.Item memory item = string(response).parse();
@@ -80,13 +121,21 @@ contract Assistant {
         return runId;
     }
 
-    function getMessages(address player, string memory runId) public onlyOwner returns (string[] memory) {
+    function getMessages(
+        address player,
+        string memory runId
+    ) public onlyOwner returns (string[] memory) {
         string memory threadId = threadIds[player];
         require(bytes(threadId).length > 0, "Thread ID not found for player");
 
         Suave.HttpRequest memory request;
         request.method = "GET";
-        request.url = string.concat("https://api.openai.com/v1/threads/", threadId, "/messages", (bytes(runId).length > 0 ? string.concat("?runId=", runId) : ""));
+        request.url = string.concat(
+            "https://api.openai.com/v1/threads/",
+            threadId,
+            "/messages",
+            (bytes(runId).length > 0 ? string.concat("?runId=", runId) : "")
+        );
         request.headers = new string[](3);
         request.headers[0] = "Content-Type: application/json";
         request.headers[1] = string.concat("Authorization: Bearer ", apiKey);
@@ -98,9 +147,50 @@ contract Assistant {
 
         string[] memory results = new string[](messages.length);
         for (uint i = 0; i < messages.length; i++) {
-            results[i] = messages[i].at('"content"').at('"text"').at('"value"').value();
+            results[i] = messages[i]
+                .at('"content"')
+                .at('"text"')
+                .at('"value"')
+                .value();
         }
 
         return results;
+    }
+
+    function saveThread(
+        address player,
+        string memory threadId
+    ) public onlyOwner {
+        Suave.HttpRequest memory request;
+        request.method = "POST";
+        // @todo: change to production url
+        request.url = "http://localhost:3000/api/thread";
+        request.headers = new string[](1);
+        request.headers[0] = "Content-Type: application/json";
+        request.body = abi.encodePacked(
+            '{"player":"',
+            toString(player),
+            '","thread_id":',
+            threadId,
+            "}"
+        );
+
+        Suave.doHTTPRequest(request);
+    }
+
+    function toString(address _addr) internal pure returns (string memory) {
+        bytes32 value = bytes32(uint256(uint160(_addr)));
+        bytes memory alphabet = "0123456789abcdef";
+
+        bytes memory str = new bytes(42);
+        str[0] = "0";
+        str[1] = "x";
+
+        for (uint256 i = 0; i < 20; i++) {
+            str[2 + i * 2] = alphabet[uint8(value[i + 12] >> 4)];
+            str[3 + i * 2] = alphabet[uint8(value[i + 12] & 0x0f)];
+        }
+
+        return string(str);
     }
 }

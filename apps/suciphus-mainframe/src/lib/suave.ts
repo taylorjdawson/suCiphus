@@ -1,12 +1,24 @@
 import {
   Address,
+  Chain,
+  createPublicClient,
+  createWalletClient,
   custom,
+  // createPublicClient,
+  // createWalletClient,
+  // custom,
   CustomTransport,
+  defineChain,
+  // EIP1193Provider,
   encodeFunctionData,
   formatEther,
   getFunctionSelector,
   Hex,
+  http,
+  PublicClient,
+  WalletClient,
 } from "@flashbots/suave-viem"
+import { suaveRigil } from "@flashbots/suave-viem/chains"
 import {
   getSuaveProvider,
   getSuaveWallet,
@@ -16,10 +28,70 @@ import {
   TransactionRequestSuave,
   TransactionSuave,
 } from "@flashbots/suave-viem/chains/utils"
+// import { createPublicClient, createWalletClient, custom, http } from "viem"
+import { EIP1193Provider } from "viem"
 
-// Assuming Hex is exported from @flashbots/suave-viem
+// import { defineChain } from "viem/utils"
 
-export const connectWallet = async (
+import "viem/window"
+
+export const suaveLocal = defineChain({
+  // ...suaveRigil,
+  id: 1_337,
+  name: "Localhost",
+  network: "localhost",
+  nativeCurrency: {
+    decimals: 18,
+    name: "Ether",
+    symbol: "ETH",
+  },
+  rpcUrls: {
+    default: { http: ["http://127.0.0.1:8545"] },
+    public: { http: ["http://127.0.0.1:8545"] },
+  },
+})
+
+const client = createWalletClient({
+  chain: suaveLocal,
+  transport: custom(window.ethereum!),
+})
+
+let publicClient: PublicClient | null = null
+
+export const getPublicClient = (chain: Chain) => {
+  if (!publicClient) {
+    publicClient = createPublicClient({
+      chain,
+      transport: http(),
+    })
+  }
+  return publicClient
+}
+
+// let walletClient: WalletClient | null = null
+
+// export const getWalletClient = (provider: EIP1193Provider) => {
+//   "use client"
+//   if (!walletClient) {
+//     walletClient = createWalletClient({
+//       chain: suaveLocal,
+//       transport: custom(provider),
+//     })
+//   }
+//   return walletClient
+// }
+
+// export const walletClient = createWalletClient({
+//   chain: localhost,
+//   transport: custom(window.ethereum!),
+// })
+
+// export const connectWallet = async () => {
+//   const addresses = await walletClient.requestAddresses()
+//   console.log(addresses)
+// }
+
+export const _connectWallet = async (
   ethereum: any,
   custom: Function,
   getSuaveWallet: Function,
