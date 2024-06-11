@@ -7,19 +7,22 @@ import {
   useEffect,
   useState,
 } from "react"
+// import {
+//   createPublicClient,
+//   createWalletClient,
+//   custom,
+//   http,
+//   PublicClient,
+//   WalletClient,
+// } from "@flashbots/suave-viem"
 import {
+  Address,
   createPublicClient,
   createWalletClient,
   custom,
   http,
   PublicClient,
   WalletClient,
-} from "@flashbots/suave-viem"
-import {
-  Address,
-  ResourceUnavailableRpcError,
-  SwitchChainError,
-  UserRejectedRequestError,
 } from "viem"
 
 import "viem/window"

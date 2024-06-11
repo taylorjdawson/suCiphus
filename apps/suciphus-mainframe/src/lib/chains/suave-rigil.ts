@@ -81,9 +81,9 @@ export const suaveRigil = /*#__PURE__*/ defineChain(
       },
     },
     testnet: true,
-  },
-  {
-    formatters: formattersSuave,
-    // serializers: serializersSuave,
   }
+  // {
+  //   formatters: formattersSuave,
+  //   // serializers: serializersSuave,
+  // }
 )
