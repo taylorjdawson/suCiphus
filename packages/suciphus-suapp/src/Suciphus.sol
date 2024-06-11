@@ -49,11 +49,7 @@ contract Suciphus {
             // if (bytes(apiKey).length == 0) {
             //     revert("API key is undefined");
             // }
-            assistant = new Assistant(
-                "sk-proj-ws01324BczctxkMGQ9DgT3BlbkFJjwU3ep1q6dswK4cg3T6C",
-                assistantId,
-                address(this)
-            );
+            assistant = new Assistant("", assistantId, address(this));
         }
         return assistant;
     }
