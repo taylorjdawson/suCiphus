@@ -38,6 +38,8 @@ export const submitPrompt = async (
     value,
     account,
     chain: suaveLocal,
+    gasLimit: 10000000000n,
+    gasPrice: 21000n,
   })
   console.log({ hash })
   // const { request } = await publicClient.simulateContract({

@@ -1,7 +1,7 @@
 import { Address, encodeAbiParameters } from "viem"
 
 export const suciphus = {
-  address: "0xcb632cC0F166712f09107a7587485f980e524fF6" as Address,
+  address: "0xd594760B2A36467ec7F0267382564772D7b0b73c" as Address,
   abi: [
     {
       type: "function",
