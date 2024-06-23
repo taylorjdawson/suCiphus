@@ -7,14 +7,15 @@ import {
   useEffect,
   useState,
 } from "react"
-// import {
-//   createPublicClient,
-//   createWalletClient,
-//   custom,
-//   http,
-//   PublicClient,
-//   WalletClient,
-// } from "@flashbots/suave-viem"
+import {
+  //   createPublicClient,
+  //   createWalletClient,
+  custom as suaveCustom,
+  Transport,
+  //   http,
+  //   PublicClient,
+  //   WalletClient,
+} from "@flashbots/suave-viem"
 import {
   Address,
   createPublicClient,
@@ -27,6 +28,8 @@ import {
 
 import "viem/window"
 
+import { getSuaveWallet, SuaveWallet } from "@flashbots/suave-viem/chains/utils"
+
 import { suaveLocal } from "@/lib/chains/suave-local"
 import { getPublicClient } from "@/lib/suave"
 
@@ -35,6 +38,7 @@ interface WalletContextType {
   connectWallet: () => Promise<void>
   account: Address | null
   publicClient: PublicClient | null
+  suaveWallet: SuaveWallet<Transport> | null
 }
 
 // Define the context with default values
@@ -43,6 +47,7 @@ const WalletContext = createContext<WalletContextType>({
   connectWallet: async () => {},
   account: null,
   publicClient: null,
+  suaveWallet: null,
 })
 
 interface WalletProviderProps {
@@ -51,6 +56,9 @@ interface WalletProviderProps {
 
 export const WalletProvider = ({ children }: WalletProviderProps) => {
   const [walletClient, setWalletClient] = useState<WalletClient | null>(null)
+  const [suaveWallet, setSuaveWallet] = useState<SuaveWallet<Transport> | null>(
+    null
+  )
   const [account, setAccount] = useState<Address | null>(null)
   const [publicClient, setPublicClient] = useState<PublicClient | null>(null)
 
@@ -84,9 +92,9 @@ export const WalletProvider = ({ children }: WalletProviderProps) => {
         chain: suaveLocal,
         transport: custom(window.ethereum!),
       })
+
       setWalletClient(client)
       configureChain(client).then(async (success) => {
-        console.log({ success })
         if (success) {
           const addresses = await client.requestAddresses()
           if (addresses.length > 0) {
@@ -101,6 +109,17 @@ export const WalletProvider = ({ children }: WalletProviderProps) => {
     // Initialize the wallet client
   }, [])
 
+  useEffect(() => {
+    if (account) {
+      const suaveWallet = getSuaveWallet({
+        transport: suaveCustom(window.ethereum!),
+        jsonRpcAccount: account,
+      })
+      console.log({ suaveWallet })
+      setSuaveWallet(suaveWallet)
+    }
+  }, [account])
+
   const connectWallet = async () => {
     if (!walletClient) return
     const addresses = await walletClient.requestAddresses()
@@ -112,7 +131,13 @@ export const WalletProvider = ({ children }: WalletProviderProps) => {
 
   return (
     <WalletContext.Provider
-      value={{ walletClient, connectWallet, account, publicClient }}
+      value={{
+        walletClient,
+        connectWallet,
+        account,
+        publicClient,
+        suaveWallet,
+      }}
     >
       {children}
     </WalletContext.Provider>

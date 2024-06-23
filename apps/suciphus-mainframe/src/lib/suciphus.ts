@@ -1,55 +1,50 @@
-// import { getContract, PublicClient, WalletClient } from "@flashbots/suave-viem"
-import { Address, getContract, PublicClient, WalletClient } from "viem"
+import { Transport } from "@flashbots/suave-viem"
+import {
+  SuaveTxRequestTypes,
+  SuaveWallet,
+  TransactionRequestSuave,
+} from "@flashbots/suave-viem/chains/utils"
+import { Address, encodeAbiParameters, encodeFunctionData } from "viem"
 
 import { suaveLocal } from "./chains/suave-local"
-import { getPublicClient } from "./suave"
 import { suciphus } from "./suciphus-abi"
 
-// const getSuciphusContract = () => {
-//   const publicClient = getPublicClient()
-//   return getContract({
-//     address: "0xFBA3912Ca04dd458c843e2EE08967fC04f3579c2",
-//     abi: wagmiAbi,
-//     client: {
-//       public: publicClient,
-//       wallet: walletClient,
-//     },
-//   })
-// }
+const KETTLE_ADDRESS_LOCAL = "0xB5fEAfbDD752ad52Afb7e1bD2E40432A485bBB7F"
+const KETTLE_ADDRESS_RIGIL = "0x03493869959C866713C33669cA118E774A30A0E5"
 
 export const submitPrompt = async (
   prompt: string,
-  account: Address,
+
   {
-    value,
-    walletClient,
-    publicClient,
-  }: { walletClient: WalletClient; publicClient: PublicClient; value: bigint }
-) => {
-  const contract = getContract({
-    ...suciphus,
-    client: {
-      public: publicClient,
-      wallet: walletClient,
-    },
-  })
-
-  const hash = await contract.write.submitPrompt([prompt], {
-    value,
     account,
-    chain: suaveLocal,
-    gasLimit: 10000000000n,
-    gasPrice: 21000n,
+    value,
+    suaveWallet,
+  }: {
+    account: Address
+    value: bigint
+    suaveWallet: SuaveWallet<Transport>
+  }
+) => {
+  // Encode the function data for the contract call
+  const data = encodeFunctionData({
+    abi: suciphus.abi, // Use the imported ABI
+    functionName: "submitPrompt",
+    args: [prompt],
   })
-  console.log({ hash })
-  // const { request } = await publicClient.simulateContract({
-  //   ...suciphus,
-  //   functionName: "submitPrompt",
-  //   args: [prompt],
-  //   account,
-  //   value,
-  // })
-  // const hash = await walletClient.writeContract(request)
 
-  return hash
+  // Create the TransactionRequestSuave object
+  const transactionRequest: TransactionRequestSuave = {
+    to: suciphus.address,
+    data: data,
+    value,
+    type: SuaveTxRequestTypes.ConfidentialRequest,
+    gas: 9000000n,
+    gasPrice: 1000000000n,
+    kettleAddress: KETTLE_ADDRESS_LOCAL,
+    chainId: suaveLocal.id,
+  }
+
+  suaveWallet.sendTransaction(transactionRequest)
+
+  return transactionRequest
 }

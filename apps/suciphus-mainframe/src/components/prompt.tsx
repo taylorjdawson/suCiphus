@@ -14,7 +14,7 @@ export interface PromptProps {
 }
 
 export const Prompt = ({ className }: PromptProps) => {
-  const { account, walletClient, publicClient } = useWallet()
+  const { account, walletClient, publicClient, suaveWallet } = useWallet()
   const [inputValue, setInputValue] = useState("")
   const [prompts, setPrompts] = useState<string[]>([])
 
@@ -35,12 +35,12 @@ export const Prompt = ({ className }: PromptProps) => {
       setPrompts([...prompts, inputValue])
       setInputValue("") // Clear the input after adding
       console.log(account, { walletClient, publicClient })
-      if (account && walletClient && publicClient) {
+      if (account && suaveWallet) {
         console.log(account)
-        submitPrompt(inputValue, account, {
-          walletClient,
-          publicClient,
-          value: parseEther("0.01"),
+        submitPrompt(inputValue, {
+          account,
+          suaveWallet,
+          value: parseEther("0.001"),
         })
       }
     }
