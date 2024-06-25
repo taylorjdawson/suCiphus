@@ -1,13 +1,11 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "globalDependencies": ["**/.env"],
-  "globalDotEnv": [".env"],
-  "pipeline": {
+  "tasks": {
     "build": {
       "cache": false,
       "dependsOn": ["^build"],
-      "outputs": [".next/**", "!.next/cache/**"],
-      "dotEnv": [".env"]
+      "outputs": [".next/**", "!.next/cache/**"]
     },
     "admin#build": {
       "dependsOn": ["^build"],
@@ -23,8 +21,7 @@
     },
     "dev": {
       "cache": false,
-      "persistent": true,
-      "dotEnv": [".env"]
+      "persistent": true
     },
     "contracts:deploy": {
       "dependsOn": ["build"],
