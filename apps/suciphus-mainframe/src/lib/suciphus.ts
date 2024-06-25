@@ -1,8 +1,8 @@
-import { Transport } from "@flashbots/suave-viem"
+import { Hex, Transport } from "@flashbots/suave-viem"
 import {
   SuaveTxRequestTypes,
   SuaveWallet,
-  TransactionRequestSuave,
+  type TransactionRequestSuave,
 } from "@flashbots/suave-viem/chains/utils"
 import { Address, encodeAbiParameters, encodeFunctionData } from "viem"
 
@@ -33,18 +33,18 @@ export const submitPrompt = async (
   })
 
   // Create the TransactionRequestSuave object
-  const transactionRequest: TransactionRequestSuave = {
+  const suaveTx: TransactionRequestSuave = {
     to: suciphus.address,
     data: data,
     value,
     type: SuaveTxRequestTypes.ConfidentialRequest,
-    gas: 9000000n,
-    gasPrice: 1000000000n,
+    gas: 1n,
+    gasPrice: 1n,
+    confidentialInputs: "0x",
     kettleAddress: KETTLE_ADDRESS_LOCAL,
-    chainId: suaveLocal.id,
   }
 
-  suaveWallet.sendTransaction(transactionRequest)
-
-  return transactionRequest
+  suaveWallet?.signTransaction(suaveTx).then((tx: Hex) => {
+    console.log(tx)
+  })
 }
