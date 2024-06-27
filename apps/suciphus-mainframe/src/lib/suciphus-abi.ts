@@ -1,13 +1,22 @@
 import { Address, encodeAbiParameters } from "viem"
 
 export const suciphus = {
-  address: "0x8f21Fdd6B4f4CacD33151777A46c122797c8BF17" as Address,
+  address: "0xB62Bb968f4601f2B16dbD0305A4D14a9B8c2b1A9" as Address,
   abi: [
+    { type: "fallback", stateMutability: "payable" },
+    { type: "receive", stateMutability: "payable" },
     {
       type: "function",
       name: "API_KEY",
       inputs: [],
       outputs: [{ name: "", type: "string", internalType: "string" }],
+      stateMutability: "view",
+    },
+    {
+      type: "function",
+      name: "HOUSE_CUT_PERCENTAGE",
+      inputs: [],
+      outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
       stateMutability: "view",
     },
     {
@@ -20,6 +29,34 @@ export const suciphus = {
     {
       type: "function",
       name: "checkSubmission",
+      inputs: [{ name: "threadId", type: "string", internalType: "string" }],
+      outputs: [{ name: "", type: "bool", internalType: "bool" }],
+      stateMutability: "nonpayable",
+    },
+    {
+      type: "function",
+      name: "example",
+      inputs: [],
+      outputs: [{ name: "", type: "bytes", internalType: "bytes" }],
+      stateMutability: "nonpayable",
+    },
+    {
+      type: "function",
+      name: "exampleCallback",
+      inputs: [],
+      outputs: [],
+      stateMutability: "nonpayable",
+    },
+    {
+      type: "function",
+      name: "getCurrentRound",
+      inputs: [],
+      outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+      stateMutability: "view",
+    },
+    {
+      type: "function",
+      name: "getHouseCutPercentage",
       inputs: [],
       outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
       stateMutability: "view",
@@ -33,24 +70,10 @@ export const suciphus = {
     },
     {
       type: "function",
-      name: "pot",
-      inputs: [],
-      outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
-      stateMutability: "view",
-    },
-    {
-      type: "function",
       name: "registerAPIKeyOffchain",
       inputs: [],
       outputs: [{ name: "", type: "bytes", internalType: "bytes" }],
       stateMutability: "nonpayable",
-    },
-    {
-      type: "function",
-      name: "resetThread",
-      inputs: [],
-      outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
-      stateMutability: "view",
     },
     {
       type: "function",
@@ -68,10 +91,48 @@ export const suciphus = {
     },
     {
       type: "function",
+      name: "state",
+      inputs: [],
+      outputs: [{ name: "", type: "uint64", internalType: "uint64" }],
+      stateMutability: "view",
+    },
+    {
+      type: "function",
       name: "submitPrompt",
       inputs: [{ name: "prompt", type: "string", internalType: "string" }],
-      outputs: [],
+      outputs: [{ name: "", type: "bytes", internalType: "bytes" }],
       stateMutability: "payable",
+    },
+    {
+      type: "function",
+      name: "submitPrompt",
+      inputs: [
+        { name: "prompt", type: "string", internalType: "string" },
+        { name: "threadId", type: "string", internalType: "string" },
+      ],
+      outputs: [{ name: "", type: "bytes", internalType: "bytes" }],
+      stateMutability: "payable",
+    },
+    {
+      type: "function",
+      name: "submitPromptCallback",
+      inputs: [
+        { name: "prompt", type: "string", internalType: "string" },
+        { name: "threadId", type: "string", internalType: "string" },
+        { name: "sender", type: "address", internalType: "address" },
+      ],
+      outputs: [
+        { name: "", type: "string", internalType: "string" },
+        { name: "", type: "string", internalType: "string" },
+      ],
+      stateMutability: "nonpayable",
+    },
+    {
+      type: "function",
+      name: "threadToRound",
+      inputs: [{ name: "", type: "string", internalType: "string" }],
+      outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+      stateMutability: "view",
     },
     {
       type: "function",
@@ -144,6 +205,57 @@ export const suciphus = {
       anonymous: false,
     },
     {
+      type: "event",
+      name: "NothingHappened",
+      inputs: [],
+      anonymous: false,
+    },
+    {
+      type: "event",
+      name: "SuccessfulSubmission",
+      inputs: [
+        {
+          name: "player",
+          type: "address",
+          indexed: true,
+          internalType: "address",
+        },
+        {
+          name: "reward",
+          type: "uint256",
+          indexed: false,
+          internalType: "uint256",
+        },
+        {
+          name: "round",
+          type: "uint256",
+          indexed: false,
+          internalType: "uint256",
+        },
+        {
+          name: "season",
+          type: "uint256",
+          indexed: false,
+          internalType: "uint256",
+        },
+      ],
+      anonymous: false,
+    },
+    {
+      type: "event",
+      name: "UpdatedState",
+      inputs: [
+        {
+          name: "newState",
+          type: "uint64",
+          indexed: false,
+          internalType: "uint64",
+        },
+      ],
+      anonymous: false,
+    },
+    { type: "error", name: "MathOverflowedMulDiv", inputs: [] },
+    {
       type: "error",
       name: "PeekerReverted",
       inputs: [
@@ -161,16 +273,16 @@ type FunctionArgTypes = {
   submitPrompt: [string]
 }
 
-export const encodeFunction = <T extends keyof FunctionArgTypes>(
-  functionName: T,
-  args: FunctionArgTypes[T]
-) => {
-  const functionSignature = suciphus.abi.find((f) => f.name === functionName)
-  if (!functionSignature) {
-    throw new Error(`Function ${functionName} not found`)
-  }
-  return encodeAbiParameters(functionSignature.inputs, args)
-}
+// export const encodeFunction = <T extends keyof FunctionArgTypes>(
+//   functionName: T,
+//   args: FunctionArgTypes[T]
+// ) => {
+//   const functionSignature = suciphus.abi.find((f) => f.name === functionName)
+//   if (!functionSignature) {
+//     throw new Error(`Function ${functionName} not found`)
+//   }
+//   return encodeAbiParameters(functionSignature.inputs, args)
+// }
 // export const encodedData = encodeAbiParameters(
 //   [{ type: "string", name: "prompt" }],
 //   ["wagmi", 420n, true]

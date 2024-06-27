@@ -5,6 +5,7 @@ import { KeyboardEvent, useEffect, useState } from "react"
 import { parseEther } from "viem"
 
 import { submitPrompt } from "@/lib/suciphus"
+import { suciphus } from "@/lib/suciphus-abi"
 
 import { Input } from "./ui/input"
 import { useWallet } from "./wallet-provider"
@@ -20,9 +21,20 @@ export const Prompt = ({ className }: PromptProps) => {
 
   useEffect(() => {
     if (publicClient) {
-      publicClient.getLogs().then((logs) => {
-        console.log(logs)
-      })
+      // publicClient.getLogs().then((logs) => {
+      //   console.log(logs)
+      // })
+      publicClient
+        .getContractEvents({
+          abi: suciphus.abi,
+          address: suciphus.address,
+        })
+        .then((logs) => {
+          console.log(logs)
+        })
+        .catch((error) => {
+          console.error(error)
+        })
     }
   }, [publicClient])
 

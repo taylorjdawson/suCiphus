@@ -33,18 +33,30 @@ export const submitPrompt = async (
   })
 
   // Create the TransactionRequestSuave object
+  // const suaveTx: TransactionRequestSuave = {
+  //   to: suciphus.address,
+  //   data: data,
+  //   value,
+  //   type: SuaveTxRequestTypes.ConfidentialRequest,
+  //   gas: 9000000n,
+  //   gasPrice: 1000000000n,
+  //   confidentialInputs: "0x",
+  //   kettleAddress: KETTLE_ADDRESS_LOCAL,
+  // }
+
   const suaveTx: TransactionRequestSuave = {
-    to: suciphus.address,
-    data: data,
-    value,
-    type: SuaveTxRequestTypes.ConfidentialRequest,
-    gas: 1n,
-    gasPrice: 1n,
     confidentialInputs: "0x",
-    kettleAddress: KETTLE_ADDRESS_LOCAL,
+    kettleAddress: KETTLE_ADDRESS_LOCAL, // Use 0x03493869959C866713C33669cA118E774A30A0E5 on Rigil.
+    to: suciphus.address,
+    gasPrice: 2000000000n,
+    gas: 100000n,
+    type: "0x43",
+    chainId: 16813125, // chain id of local SUAVE devnet and Rigil
+    data,
   }
 
-  suaveWallet?.signTransaction(suaveTx).then((tx: Hex) => {
+  suaveWallet?.signTransaction(suaveTx).then((tx) => {
     console.log(tx)
+    suaveWallet.sendRawTransaction({ serializedTransaction: tx })
   })
 }

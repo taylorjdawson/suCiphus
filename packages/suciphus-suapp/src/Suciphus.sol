@@ -54,6 +54,29 @@ contract Suciphus {
         uint256 season
     );
 
+    uint64 public state;
+    event UpdatedState(uint64 newState);
+
+    function exampleCallback() external {
+        state++;
+        emit UpdatedState(state);
+    }
+
+    // example is a function executed in a confidential request that includes
+    // a callback that can modify the state.
+    function example() external returns (bytes memory) {
+        require(Suave.isConfidential());
+        return abi.encodeWithSelector(this.exampleCallback.selector);
+    }
+
+    event NothingHappened();
+
+    receive() external payable {}
+
+    fallback() external payable {
+        emit NothingHappened();
+    }
+
     function getAssistant() private returns (Assistant) {
         if (address(assistant) == address(0)) {
             // bytes memory keyData = Suave.confidentialRetrieve(
@@ -64,7 +87,11 @@ contract Suciphus {
             // if (bytes(apiKey).length == 0) {
             //     revert("API key is undefined");
             // }
-            assistant = new Assistant("", assistantId, address(this));
+            assistant = new Assistant(
+                "sk-proj-ufkeCiycsF5TUKMdIkt0T3BlbkFJyRprMQ7rasoei1f7iJ5S",
+                assistantId,
+                address(this)
+            );
         }
         return assistant;
     }
@@ -94,28 +121,41 @@ contract Suciphus {
             );
     }
 
-    // @todo: might want these prompts to be hidden until the pot reset
-    function submitPrompt(
+    function submitPromptCallback(
         string memory prompt,
-        string memory threadId
-    ) public payable returns (string memory, string memory) {
-        require(
-            msg.value >= SUBMISSION_FEE,
-            "Insufficient funds sent for submission"
-        );
+        string memory threadId,
+        address sender
+    ) public returns (string memory, string memory) {
         string memory escapedPrompt = LibString.escapeJSON(prompt);
         assistant = getAssistant();
 
         // Update the round for the threadId
         threadToRound[threadId] = round;
 
+        return assistant.createMessageAndRun(sender, threadId, escapedPrompt);
+    }
+
+    // @todo: might want these prompts to be hidden until the pot reset
+    function submitPrompt(
+        string memory prompt,
+        string memory threadId
+    ) public payable returns (bytes memory) {
+        require(
+            msg.value >= SUBMISSION_FEE,
+            "Insufficient funds sent for submission"
+        );
         return
-            assistant.createMessageAndRun(msg.sender, threadId, escapedPrompt);
+            abi.encodeWithSelector(
+                this.submitPromptCallback.selector,
+                prompt,
+                threadId,
+                msg.sender
+            );
     }
 
     function submitPrompt(
         string memory prompt
-    ) public payable returns (string memory, string memory) {
+    ) public payable returns (bytes memory) {
         return submitPrompt(prompt, "");
     }
 
@@ -149,7 +189,7 @@ contract Suciphus {
 
         if (containsPlayerAddress) {
             uint256 balance = address(this).balance;
-            uint256 houseCut = Math.mulDiv(balance, houseCutPercentage, 100);
+            uint256 houseCut = Math.mulDiv(balance, HOUSE_CUT_PERCENTAGE, 100);
             uint256 amountToSend = balance - houseCut;
 
             payable(msg.sender).transfer(amountToSend);
