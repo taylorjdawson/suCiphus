@@ -7,7 +7,7 @@ import {
 import { Address, encodeAbiParameters, encodeFunctionData } from "viem"
 
 import { suaveLocal } from "./chains/suave-local"
-import { suciphus } from "./suciphus-abi"
+import { suciphus } from "@repo/suciphus-suapp/dist/suciphus"
 
 const KETTLE_ADDRESS_LOCAL = "0xB5fEAfbDD752ad52Afb7e1bD2E40432A485bBB7F"
 const KETTLE_ADDRESS_RIGIL = "0x03493869959C866713C33669cA118E774A30A0E5"
@@ -26,10 +26,15 @@ export const submitPrompt = async (
   }
 ) => {
   // Encode the function data for the contract call
+  // const data = encodeFunctionData({
+  //   abi: suciphus.abi, // Use the imported ABI
+  //   functionName: "submitPrompt",
+  //   args: [prompt],
+  // })
+
   const data = encodeFunctionData({
     abi: suciphus.abi, // Use the imported ABI
-    functionName: "submitPrompt",
-    args: [prompt],
+    functionName: "example",
   })
 
   // Create the TransactionRequestSuave object
@@ -55,7 +60,7 @@ export const submitPrompt = async (
     data,
   }
 
-  suaveWallet?.signTransaction(suaveTx).then((tx) => {
+  suaveWallet.signTransaction(suaveTx).then((tx) => {
     console.log(tx)
     suaveWallet.sendRawTransaction({ serializedTransaction: tx })
   })

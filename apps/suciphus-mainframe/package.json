@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 3001",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -11,6 +11,7 @@
     "format:check": "pnpm prettier ./src --check"
   },
   "dependencies": {
+    "@repo/suciphus-suapp": "workspace:*",
     "@flashbots/suave-viem": "1.14.3",
     "@radix-ui/react-dropdown-menu": "^2.0.6",
     "@radix-ui/react-slot": "^1.0.2",

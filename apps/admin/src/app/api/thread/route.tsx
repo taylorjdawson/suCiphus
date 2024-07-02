@@ -3,6 +3,7 @@ import { newThread } from "@/lib/db"
 
 export async function POST(request: Request) {
   const res = (await request.json()) as NewThreadRequest
+  console.log({ res })
   await newThread(res)
   return Response.json({ res })
 }

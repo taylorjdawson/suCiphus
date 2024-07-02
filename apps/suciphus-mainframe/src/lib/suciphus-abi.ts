@@ -1,7 +1,7 @@
-import { Address, encodeAbiParameters } from "viem"
+import { Address } from "viem"
 
 export const suciphus = {
-  address: "0xB62Bb968f4601f2B16dbD0305A4D14a9B8c2b1A9" as Address,
+  address: "0x9a151AA453329f3cdf04D8e4e81585A423f7fC25" as Address,
   abi: [
     { type: "fallback", stateMutability: "payable" },
     { type: "receive", stateMutability: "payable" },
@@ -101,7 +101,7 @@ export const suciphus = {
       name: "submitPrompt",
       inputs: [{ name: "prompt", type: "string", internalType: "string" }],
       outputs: [{ name: "", type: "bytes", internalType: "bytes" }],
-      stateMutability: "payable",
+      stateMutability: "nonpayable",
     },
     {
       type: "function",
@@ -111,20 +111,17 @@ export const suciphus = {
         { name: "threadId", type: "string", internalType: "string" },
       ],
       outputs: [{ name: "", type: "bytes", internalType: "bytes" }],
-      stateMutability: "payable",
+      stateMutability: "nonpayable",
     },
     {
       type: "function",
       name: "submitPromptCallback",
       inputs: [
-        { name: "prompt", type: "string", internalType: "string" },
+        { name: "player", type: "address", internalType: "address" },
         { name: "threadId", type: "string", internalType: "string" },
-        { name: "sender", type: "address", internalType: "address" },
+        { name: "runId", type: "string", internalType: "string" },
       ],
-      outputs: [
-        { name: "", type: "string", internalType: "string" },
-        { name: "", type: "string", internalType: "string" },
-      ],
+      outputs: [],
       stateMutability: "nonpayable",
     },
     {
@@ -208,6 +205,43 @@ export const suciphus = {
       type: "event",
       name: "NothingHappened",
       inputs: [],
+      anonymous: false,
+    },
+    {
+      type: "event",
+      name: "PromptSubmitted",
+      inputs: [
+        {
+          name: "player",
+          type: "address",
+          indexed: true,
+          internalType: "address",
+        },
+        {
+          name: "threadId",
+          type: "string",
+          indexed: true,
+          internalType: "string",
+        },
+        {
+          name: "runId",
+          type: "string",
+          indexed: false,
+          internalType: "string",
+        },
+        {
+          name: "round",
+          type: "uint256",
+          indexed: false,
+          internalType: "uint256",
+        },
+        {
+          name: "season",
+          type: "uint256",
+          indexed: false,
+          internalType: "uint256",
+        },
+      ],
       anonymous: false,
     },
     {

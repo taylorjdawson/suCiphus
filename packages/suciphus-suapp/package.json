@@ -1,0 +1,15 @@
+{
+  "name": "@repo/suciphus-suapp",
+  "version": "0.0.1",
+  "private": true,
+  "license": "MIT",
+  "author": "x3y.in",
+  "scripts": {
+    "build": "tsc",
+    "contracts:build": "forge build",
+    "contracts:deploy": "./deploy.sh"
+  },
+  "dependencies": {
+    "viem": "^2.9.25"
+  }
+}

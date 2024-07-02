@@ -4,7 +4,7 @@ pragma solidity ^0.8.19;
 import "forge-std/Test.sol";
 import "suave-std/Test.sol";
 
-import "../src/Assistant.sol";
+import "../contracts/Assistant.sol";
 
 contract AssistantTest is Test, SuaveEnabled {
     address owner = address(this);
@@ -69,7 +69,9 @@ contract AssistantTest is Test, SuaveEnabled {
     }
 
     function getApiKey() private returns (string memory) {
-        try vm.envString("OPENAI_API_KEY_CONTRACT") returns (string memory apiKey) {
+        try vm.envString("OPENAI_API_KEY_CONTRACT") returns (
+            string memory apiKey
+        ) {
             if (bytes(apiKey).length == 0) {
                 vm.skip(true);
             }
@@ -81,7 +83,9 @@ contract AssistantTest is Test, SuaveEnabled {
     }
 
     function getAssistantId() private returns (string memory) {
-        try vm.envString("OPENAI_ASSISTANT_ID") returns (string memory assistantId) {
+        try vm.envString("OPENAI_ASSISTANT_ID") returns (
+            string memory assistantId
+        ) {
             if (bytes(assistantId).length == 0) {
                 vm.skip(true);
             }

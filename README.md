@@ -16,11 +16,11 @@ This Turborepo includes the following packages/apps:
 
 ### Apps and Packages
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
 - `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
 - `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+- `@repo/suciphus-suapp`: the main app
+- `suciphus-mainframe`: a frontend application served at `http://localhost:3001`
+- `admin`: an admin dashboard served at `http://localhost:3000`
 
 Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
 
@@ -37,18 +37,61 @@ This Turborepo has some additional tools already setup for you:
 To build all apps and packages, run the following command:
 
 ```
-cd my-turborepo
 pnpm build
 ```
 
 ### Develop
 
+#### Start geth
+
+Using installed suave-geth
+
+```
+suave-geth --suave-dev
+```
+
+Local suave-geth build
+
+```
+./build/bin/geth \
+ --dev \
+ --dev.gaslimit 5000000000 \
+ --http \
+ --http.addr "0.0.0.0" \
+ --http.port 8545 \
+ --http.api "eth,web3,net,clique,debug" \
+ --http.corsdomain "*" \
+ --allow-insecure-unlock \
+ --keystore "$HOME/.suave-dev/keystore" \
+ --unlock "0xB5fEAfbDD752ad52Afb7e1bD2E40432A485bBB7F" \
+ --password "$HOME/.suave-dev/password.txt" \
+ --ws \
+ --suave.eth.remote_endpoint "http://localhost:8548" \
+ --miner.gasprice 0 \
+ --rpc.gascap 10000000000 \
+ --networkid 16813125 \
+ --suave.eth.external-whitelist "*" \
+ --verbosity 3
+```
+
+#### Build & Deploy contracts
+
+```
+cd /packages/suciphus-suapp
+pnpm contracts:build
+pnpm contracts:deploy
+```
+
 To develop all apps and packages, run the following command:
 
 ```
-cd my-turborepo
 pnpm dev
 ```
+
+This will start both `suciphus-mainframe` and `admin` apps:
+
+- `suciphus-mainframe` is accessible at `http://localhost:3001/player` for testing prompts.
+- `admin` can be accessed at `http://localhost:3000/admin/` to view the admin dashboard.
 
 ### Remote Caching
 

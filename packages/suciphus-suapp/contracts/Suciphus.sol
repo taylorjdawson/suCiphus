@@ -54,6 +54,14 @@ contract Suciphus {
         uint256 season
     );
 
+    event PromptSubmitted(
+        address indexed player,
+        string indexed threadId,
+        string runId,
+        uint256 round,
+        uint256 season
+    );
+
     uint64 public state;
     event UpdatedState(uint64 newState);
 
@@ -87,11 +95,7 @@ contract Suciphus {
             // if (bytes(apiKey).length == 0) {
             //     revert("API key is undefined");
             // }
-            assistant = new Assistant(
-                "sk-proj-ufkeCiycsF5TUKMdIkt0T3BlbkFJyRprMQ7rasoei1f7iJ5S",
-                assistantId,
-                address(this)
-            );
+            assistant = new Assistant("", assistantId, address(this));
         }
         return assistant;
     }
@@ -122,40 +126,41 @@ contract Suciphus {
     }
 
     function submitPromptCallback(
-        string memory prompt,
+        address player,
         string memory threadId,
-        address sender
-    ) public returns (string memory, string memory) {
-        string memory escapedPrompt = LibString.escapeJSON(prompt);
-        assistant = getAssistant();
-
+        string memory runId
+    ) public {
         // Update the round for the threadId
         threadToRound[threadId] = round;
 
-        return assistant.createMessageAndRun(sender, threadId, escapedPrompt);
+        emit PromptSubmitted(player, threadId, runId, round, season);
     }
 
     // @todo: might want these prompts to be hidden until the pot reset
     function submitPrompt(
         string memory prompt,
         string memory threadId
-    ) public payable returns (bytes memory) {
-        require(
-            msg.value >= SUBMISSION_FEE,
-            "Insufficient funds sent for submission"
-        );
+    ) public returns (bytes memory) {
+        string memory escapedPrompt = LibString.escapeJSON(prompt);
+        assistant = getAssistant();
+
+        // (string memory runId, string memory threadId) = assistant
+        //     .createMessageAndRun(msg.sender, threadId, escapedPrompt);
+        // runId = "runId";
+        // require(
+        //     msg.value >= SUBMISSION_FEE,
+        //     "Insufficient funds sent for submission"
+        // );
         return
             abi.encodeWithSelector(
                 this.submitPromptCallback.selector,
-                prompt,
+                msg.sender,
                 threadId,
-                msg.sender
+                "runId"
             );
     }
 
-    function submitPrompt(
-        string memory prompt
-    ) public payable returns (bytes memory) {
+    function submitPrompt(string memory prompt) public returns (bytes memory) {
         return submitPrompt(prompt, "");
     }
 

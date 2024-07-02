@@ -5,6 +5,7 @@ import { ColumnDef } from "@tanstack/react-table"
 import { Message } from "openai/resources/beta/threads/messages.mjs"
 
 import { truncateId } from "@/lib/utils"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible"
 
 export const columns: ColumnDef<Message>[] = [
   {
@@ -56,10 +57,20 @@ export const columns: ColumnDef<Message>[] = [
     header: "Message",
     cell: ({ row }) => {
       const message = row.getValue<string>("content")
-      return message ? (
-        <div className="overflow-hidden truncate text-ellipsis">{message}</div>
-      ) : (
-        <div className="w-full text-center">{message}</div>
+      return (
+        <div className="flex">
+          {message ? (
+            <Collapsible>
+            <CollapsibleTrigger className="max-w-[350px] overflow-hidden truncate text-ellipsis">{message}</CollapsibleTrigger>
+            <CollapsibleContent>
+              {message}
+            </CollapsibleContent>
+          </Collapsible>
+    
+          ) : (
+            <div className="w-full text-center">{message}</div>
+          )}
+        </div>
       )
     },
   },
