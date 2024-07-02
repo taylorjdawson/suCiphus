@@ -255,6 +255,10 @@ importers:
       viem:
         specifier: ^2.9.25
         version: 2.16.5(typescript@5.5.3)(zod@3.23.8)
+    devDependencies:
+      typescript:
+        specifier: ^5.3.3
+        version: 5.5.3
 
   packages/typescript-config: {}
 

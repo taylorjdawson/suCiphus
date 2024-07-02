@@ -77,14 +77,19 @@ Local suave-geth build
 #### Build & Deploy contracts
 
 ```sh
-cd /packages/suciphus-suapp
+cd ./packages/suciphus-suapp
+pnpm i
 pnpm contracts:build
 pnpm contracts:deploy
+pnpm build
+cd -
 ```
 
 To develop all apps and packages, run the following command:
 
 ```sh
+cd apps/admin && cp .env.example .env && cd -
+cd apps/suciphus-mainframe && cp .env.example .env && cd -
 pnpm i
 pnpm dev
 ```
