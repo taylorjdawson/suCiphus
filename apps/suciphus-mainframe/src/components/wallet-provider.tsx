@@ -22,20 +22,19 @@ import { getSuaveProvider, getSuaveWallet, SuaveProvider, SuaveWallet } from "@f
 import { suaveLocal } from "@/lib/chains/suave-local"
 
 interface WalletContextType {
-  walletClient: WalletClient | null
   connectWallet: () => Promise<void>
-  account: Address | null
-  publicClient: SuaveProvider<HttpTransport> | null
-  suaveWallet: SuaveWallet<CustomTransport> | null
+  account?: Address
+  publicClient?: SuaveProvider<HttpTransport>
+  suaveWallet?: SuaveWallet<CustomTransport>
 }
+
+type EthereumProvider = { request(...args: any): Promise<any> }
 
 // Define the context with default values
 const WalletContext = createContext<WalletContextType>({
-  walletClient: null,
-  connectWallet: async () => { },
-  account: null,
-  publicClient: null,
-  suaveWallet: null,
+  connectWallet: async () => {
+    console.warn("Wallet provider not initialized")
+  },
 })
 
 interface WalletProviderProps {
@@ -43,12 +42,11 @@ interface WalletProviderProps {
 }
 
 export const WalletProvider = ({ children }: WalletProviderProps) => {
-  const [walletClient, setWalletClient] = useState<WalletClient | null>(null)
-  const [suaveWallet, setSuaveWallet] = useState<SuaveWallet<CustomTransport> | null>(
-    null
-  )
-  const [account, setAccount] = useState<Address | null>(null)
+  const [suaveWallet, setSuaveWallet] = useState<SuaveWallet<CustomTransport>>()
+  const [account, setAccount] = useState<Address>()
   const [publicClient, setPublicClient] = useState<SuaveProvider<HttpTransport>>()
+  const [walletClient, setWalletClient] = useState<WalletClient>()
+  const [eth, setEth] = useState<{ request(...args: any): Promise<any> }>()
 
   const configureChain = async (
     walletClient: WalletClient
@@ -75,29 +73,25 @@ export const WalletProvider = ({ children }: WalletProviderProps) => {
 
   const getWindowEthereum = () => {
     if (typeof window !== "undefined" && "ethereum" in window) {
-      return window.ethereum as { request(...args: any): Promise<any> }
+      return window.ethereum as EthereumProvider
     }
     return null
   }
 
   useEffect(() => {
     const eth = getWindowEthereum()
-    if (eth && !walletClient) {
+    if (!eth) {
+      alert("No ethereum provider found. Please install a browser wallet.")
+      return
+    }
+    setEth(eth)
+    if (!walletClient) {
       console.log("creating wallet client")
       const client = createWalletClient({
         chain: suaveLocal,
         transport: custom(eth),
       })
-
       setWalletClient(client)
-      configureChain(client).then(async (success) => {
-        if (success) {
-          const addresses = await client.requestAddresses()
-          if (addresses.length > 0) {
-            setAccount(addresses[0])
-          }
-        }
-      })
     }
 
     if (!publicClient) {
@@ -105,39 +99,35 @@ export const WalletProvider = ({ children }: WalletProviderProps) => {
       setPublicClient(publicClient)
     }
 
-    // Initialize the wallet client
-  }, [publicClient, walletClient])
-
-  useEffect(() => {
-    if (account) {
-      const eth = getWindowEthereum()
-      if (!eth) return
-      const suaveWallet = getSuaveWallet({
-        transport: custom(eth),
-        jsonRpcAccount: account,
-      })
-      console.log({ suaveWallet })
-      setSuaveWallet(suaveWallet)
-    }
-  }, [account])
+  }, [publicClient, walletClient, account, eth])
 
   const connectWallet = async () => {
-    if (!walletClient) return
+    if (!walletClient || !eth) {
+      throw new Error("Wallet client not initialized")
+    }
+    configureChain(walletClient).then(async (success) => {
+      if (success) {
+        const addresses = await walletClient.requestAddresses()
+        if (addresses.length > 0) {
+          setAccount(addresses[0])
+          const suaveWallet = getSuaveWallet({
+            transport: custom(eth),
+            jsonRpcAccount: addresses[0],
+          })
+          console.log({ suaveWallet })
+          setSuaveWallet(suaveWallet)
+        }
+      }
+    })
     const addresses = await walletClient.requestAddresses()
     if (addresses.length > 0) {
-      console.log("setting account", addresses[0])
       setAccount(addresses[0])
     }
   }
 
-  if (!publicClient) {
-    console.warn("public client not initialized")
-    return
-  }
   return (
     <WalletContext.Provider
       value={{
-        walletClient,
         connectWallet,
         account,
         publicClient,

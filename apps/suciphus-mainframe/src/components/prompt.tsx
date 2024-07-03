@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { KeyboardEvent, useEffect, useState } from "react"
-import { encodeFunctionData, parseEther } from "@flashbots/suave-viem"
+import { Address, CustomTransport, HttpTransport, encodeFunctionData, parseEther } from "@flashbots/suave-viem"
 
 import { submitPrompt } from "@/lib/suciphus"
 import { suciphus as suciphusDeployment } from "@repo/suciphus-suapp/src/suciphus"
@@ -12,17 +12,19 @@ import { Input } from "./ui/input"
 import { useWallet } from "./wallet-provider"
 
 export interface PromptProps {
-  className?: string
+  className?: string,
 }
 
 export const Prompt = ({ className }: PromptProps) => {
-  const { account, walletClient, publicClient, suaveWallet } = useWallet()
+  const { suaveWallet, publicClient, account } = useWallet()
   const [inputValue, setInputValue] = useState("")
   const [prompts, setPrompts] = useState<string[]>([])
   const [stateVal, setStateVal] = useState<number>()
 
   useEffect(() => {
-    fetchState()
+    if (stateVal === undefined) {
+      fetchState()
+    }
     if (publicClient) {
       publicClient.watchPendingTransactions({
         onTransactions: async (_txHashes) => {
@@ -30,7 +32,7 @@ export const Prompt = ({ className }: PromptProps) => {
         },
       })
     }
-  }, [])
+  }, [stateVal, publicClient])
 
   const fetchState = async () => {
     if (publicClient) {
@@ -57,7 +59,6 @@ export const Prompt = ({ className }: PromptProps) => {
     if (event.key === "Enter" && inputValue.trim() !== "") {
       setPrompts([...prompts, inputValue])
       setInputValue("") // Clear the input after adding
-      console.log(account, { walletClient, publicClient })
       if (account && suaveWallet) {
         console.log(account)
         const hash = await submitPrompt(inputValue, {
@@ -66,17 +67,13 @@ export const Prompt = ({ className }: PromptProps) => {
           value: parseEther("0.001"),
         })
         console.log("tx hash", hash)
-        if (!publicClient) {
-          console.warn("No public client")
-          return
-        }
       }
     }
   }
 
   return (
     <div className={`w-full ${className}`}>
-      <div>State: {stateVal || "undefined"}</div>
+      <div>State: {stateVal || <em>loading...</em>}</div>
       <div>
         {prompts.map((prompt, index) => (
           <div key={index}>{prompt}</div>
@@ -85,6 +82,7 @@ export const Prompt = ({ className }: PromptProps) => {
       <div>
         <Input
           placeholder="Enter your prompt"
+          disabled={!suaveWallet}
           value={inputValue}
           onChange={handleInputChange}
           onKeyDown={handleKeyPress}
