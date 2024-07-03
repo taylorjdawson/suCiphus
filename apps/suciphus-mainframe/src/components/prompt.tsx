@@ -2,10 +2,11 @@
 
 import * as React from "react"
 import { KeyboardEvent, useEffect, useState } from "react"
-import { parseEther } from "viem"
+import { encodeFunctionData, parseEther } from "@flashbots/suave-viem"
 
 import { submitPrompt } from "@/lib/suciphus"
-import { suciphus } from "@/lib/suciphus-abi"
+import { suciphus as suciphusDeployment } from "@repo/suciphus-suapp/src/suciphus"
+import suciphus from "@repo/suciphus-suapp/out/Suciphus.sol/Suciphus.json"
 
 import { Input } from "./ui/input"
 import { useWallet } from "./wallet-provider"
@@ -18,48 +19,64 @@ export const Prompt = ({ className }: PromptProps) => {
   const { account, walletClient, publicClient, suaveWallet } = useWallet()
   const [inputValue, setInputValue] = useState("")
   const [prompts, setPrompts] = useState<string[]>([])
+  const [stateVal, setStateVal] = useState<number>()
 
   useEffect(() => {
+    fetchState()
     if (publicClient) {
-      // publicClient.getLogs().then((logs) => {
-      //   console.log(logs)
-      // })
-      publicClient
-        .getContractEvents({
-          abi: suciphus.abi,
-          address: suciphus.address,
-        })
-        .then((logs) => {
-          console.log(logs)
-        })
-        .catch((error) => {
-          console.error(error)
-        })
+      publicClient.watchPendingTransactions({
+        onTransactions: async (_txHashes) => {
+          await fetchState()
+        },
+      })
     }
-  }, [publicClient])
+  }, [])
+
+  const fetchState = async () => {
+    if (publicClient) {
+      const state = await publicClient.call({
+        to: suciphusDeployment.address,
+        data: encodeFunctionData({
+          abi: suciphus.abi,
+          functionName: "stateNum",
+        }),
+      })
+      if (!state.data) {
+        console.warn("No data returned from state call")
+        return
+      }
+      setStateVal(parseInt(state.data, 16))
+    }
+  }
 
   const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(event.target.value)
   }
 
-  const handleKeyPress = (event: KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyPress = async (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Enter" && inputValue.trim() !== "") {
       setPrompts([...prompts, inputValue])
       setInputValue("") // Clear the input after adding
       console.log(account, { walletClient, publicClient })
       if (account && suaveWallet) {
         console.log(account)
-        submitPrompt(inputValue, {
+        const hash = await submitPrompt(inputValue, {
           account,
           suaveWallet,
           value: parseEther("0.001"),
         })
+        console.log("tx hash", hash)
+        if (!publicClient) {
+          console.warn("No public client")
+          return
+        }
       }
     }
   }
 
   return (
     <div className={`w-full ${className}`}>
+      <div>State: {stateVal || "undefined"}</div>
       <div>
         {prompts.map((prompt, index) => (
           <div key={index}>{prompt}</div>

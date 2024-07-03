@@ -62,12 +62,12 @@ contract Suciphus {
         uint256 season
     );
 
-    uint64 public state;
+    uint64 public stateNum;
     event UpdatedState(uint64 newState);
 
     function exampleCallback() external {
-        state++;
-        emit UpdatedState(state);
+        stateNum++;
+        emit UpdatedState(stateNum);
     }
 
     // example is a function executed in a confidential request that includes
