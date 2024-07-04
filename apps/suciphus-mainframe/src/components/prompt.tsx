@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { KeyboardEvent, useEffect, useState } from "react"
-import { Address, CustomTransport, HttpTransport, encodeFunctionData, parseEther } from "@flashbots/suave-viem"
+import { Address, CustomTransport, Hash, HttpTransport, decodeEventLog, encodeFunctionData, parseEther } from "@flashbots/suave-viem"
 
 import { submitPrompt } from "@/lib/suciphus"
 import { suciphus as suciphusDeployment } from "@repo/suciphus-suapp/src/suciphus"
@@ -20,6 +20,28 @@ export const Prompt = ({ className }: PromptProps) => {
   const [inputValue, setInputValue] = useState("")
   const [prompts, setPrompts] = useState<string[]>([])
   const [stateVal, setStateVal] = useState<number>()
+  const [pendingTxs, setPendingTxs] = useState<Hash[]>([])
+
+  const fetchPendingReceipts = async (txHashes: Hash[]) => {
+    if (publicClient) {
+      for (const txHash of txHashes) {
+        if (pendingTxs.includes(txHash)) {
+          // get receipt
+          const receipt = await publicClient.getTransactionReceipt({ hash: txHash })
+          // check receipt for logs of event `LogBytes(string label, bytes value)`
+          for (const log of receipt.logs) {
+            const decoded = decodeEventLog({
+              abi: suciphus.abi,
+              data: log.data,
+              topics: log.topics,
+            })
+            console.log("decoded log", decoded)
+          }
+          setPendingTxs((prev) => prev.filter((hash) => hash !== txHash))
+        }
+      }
+    }
+  }
 
   useEffect(() => {
     if (stateVal === undefined) {
@@ -27,12 +49,13 @@ export const Prompt = ({ className }: PromptProps) => {
     }
     if (publicClient) {
       publicClient.watchPendingTransactions({
-        onTransactions: async (_txHashes) => {
+        onTransactions: async (txHashes) => {
           await fetchState()
+          await fetchPendingReceipts(txHashes)
         },
       })
     }
-  }, [stateVal, publicClient])
+  }, [stateVal, publicClient, pendingTxs])
 
   const fetchState = async () => {
     if (publicClient) {
@@ -61,19 +84,20 @@ export const Prompt = ({ className }: PromptProps) => {
       setInputValue("") // Clear the input after adding
       if (account && suaveWallet) {
         console.log(account)
-        const hash = await submitPrompt(inputValue, {
-          account,
+        const hash = await submitPrompt({
+          prompt: inputValue,
+          threadId: "test", // TODO: cache this in LocalStorage or smth
           suaveWallet,
-          value: parseEther("0.001"),
         })
         console.log("tx hash", hash)
+        setPendingTxs([...pendingTxs, hash])
       }
     }
   }
 
   return (
     <div className={`w-full ${className}`}>
-      <div>State: {stateVal || <em>loading...</em>}</div>
+      <div>State: {stateVal === undefined ? <em>loading...</em> : stateVal}</div>
       <div>
         {prompts.map((prompt, index) => (
           <div key={index}>{prompt}</div>
@@ -88,6 +112,14 @@ export const Prompt = ({ className }: PromptProps) => {
           onKeyDown={handleKeyPress}
         />
       </div>
+      {pendingTxs.length > 0 && <div>
+        <p>Pending</p>
+        <ul>
+          {pendingTxs.map((tx, index) => (
+            <li key={index}>{tx}</li>
+          ))}
+        </ul>
+      </div>}
     </div>
   )
 }

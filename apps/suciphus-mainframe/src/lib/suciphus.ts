@@ -11,61 +11,56 @@ import { suaveLocal } from "./chains/suave-local"
 import { suciphus as suciphusDeployment } from "@repo/suciphus-suapp/dist/suciphus"
 import suciphus from "@repo/suciphus-suapp/out/Suciphus.sol/Suciphus.json"
 
-const KETTLE_ADDRESS_LOCAL = "0xB5fEAfbDD752ad52Afb7e1bD2E40432A485bBB7F"
-const KETTLE_ADDRESS_RIGIL = "0x03493869959C866713C33669cA118E774A30A0E5"
+/* devnet: */
+const KETTLE_ADDRESS = "0xB5fEAfbDD752ad52Afb7e1bD2E40432A485bBB7F"
+/* rigil:
+const KETTLE_ADDRESS = "0x03493869959C866713C33669cA118E774A30A0E5"
+*/
 
-export const submitPrompt = async (
-  prompt: string,
+type SubmitPromptParams = {
+  prompt: string
+  value?: bigint
+  suaveWallet: SuaveWallet<Transport>
+  threadId: string
+}
 
-  {
-    account,
+export const submitPrompt = async (params: SubmitPromptParams) => {
+  const {
+    prompt,
     value,
-    suaveWallet,
-  }: {
-    account: Address
-    value: bigint
-    suaveWallet: SuaveWallet<Transport>
-  }
-) => {
-  // Encode the function data for the contract call
-  // const data = encodeFunctionData({
-  //   abi: suciphus.abi, // Use the imported ABI
-  //   functionName: "submitPrompt",
-  //   args: [prompt],
-  // })
-
-  const data = encodeFunctionData({
-    abi: suciphus.abi, // Use the imported ABI
-    functionName: "example",
-  })
-
-  // Create the TransactionRequestSuave object
-  // const suaveTx: TransactionRequestSuave = {
-  //   to: suciphus.address,
-  //   data: data,
-  //   value,
-  //   type: SuaveTxRequestTypes.ConfidentialRequest,
-  //   gas: 9000000n,
-  //   gasPrice: 1000000000n,
-  //   confidentialInputs: "0x",
-  //   kettleAddress: KETTLE_ADDRESS_LOCAL,
-  // }
-
-  console.warn("suciphusDeployment.address", suciphusDeployment.address)
+    threadId,
+    suaveWallet
+  } = params
   const suaveTx: TransactionRequestSuave = {
-    confidentialInputs: "0x",
-    kettleAddress: KETTLE_ADDRESS_LOCAL, // Use 0x03493869959C866713C33669cA118E774A30A0E5 on Rigil.
+    confidentialInputs: encodeAbiParameters([{
+      components: [
+        {
+          name: "prompt",
+          type: "string",
+        },
+        {
+          name: "threadId",
+          type: "string",
+        },
+      ],
+      type: "tuple",
+    }], [{
+      prompt,
+      threadId,
+    }]),
+    kettleAddress: KETTLE_ADDRESS,
     to: suciphusDeployment.address,
-    gas: 100000n,
+    gas: 500000n,
     type: "0x43",
-    chainId: 16813125, // chain id of local SUAVE devnet and Rigil
-    data,
+    data: encodeFunctionData({
+      abi: suciphus.abi,
+      functionName: "submitPrompt",
+    }),
+    value,
   }
 
   const tx = await suaveWallet.signTransaction(suaveTx)
   console.log(tx)
   console.log("parsed signed tx", parseTransactionSuave(tx))
   return await suaveWallet.sendRawTransaction({ serializedTransaction: tx })
-  
-  // return await suaveWallet.sendTransaction(suaveTx)
 }

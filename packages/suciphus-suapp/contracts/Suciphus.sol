@@ -3,12 +3,13 @@ pragma solidity ^0.8.19;
 
 import "solidity-stringutils/strings.sol";
 import "suave-std/Context.sol";
+import {Suapp} from "suave-std/Suapp.sol";
 import "solady/src/utils/LibString.sol";
 import "./Assistant.sol";
 import "forge-std/console.sol";
 import "openzeppelin-contracts/contracts/utils/math/Math.sol";
 
-contract Suciphus {
+contract Suciphus is Suapp {
     using strings for *;
 
     Suave.DataId apiKeyRecord;
@@ -37,15 +38,20 @@ contract Suciphus {
     // This mapping is used to check if a submission is within the valid round timeframe when determining success.
     mapping(string => uint256) public threadToRound;
 
-    // constructor(string memory _apiKey) {
-    //     apiKey = _apiKey;
-    //     assistant = new Assistant(apiKey, assistantId, address(this));
-    // }
+    constructor()
+    /*
+        string memory _apiKey,
+        string memory _assistantId
+    */ {
+        // apiKey = _apiKey;
+        assistant = new Assistant("apiKey", "assistantId", address(this));
+    }
 
     // Define debugging events
     event LogString(string label, string message);
     event LogAddress(string label, address value);
     event LogUint(string label, uint256 value);
+    event LogBytes(string label, bytes value);
 
     event SuccessfulSubmission(
         address indexed player,
@@ -62,42 +68,19 @@ contract Suciphus {
         uint256 season
     );
 
+    struct Prompt {
+        string prompt;
+        string threadId;
+    }
+
     uint64 public stateNum;
     event UpdatedState(uint64 newState);
-
-    function exampleCallback() external {
-        stateNum++;
-        emit UpdatedState(stateNum);
-    }
-
-    // example is a function executed in a confidential request that includes
-    // a callback that can modify the state.
-    function example() external returns (bytes memory) {
-        require(Suave.isConfidential());
-        return abi.encodeWithSelector(this.exampleCallback.selector);
-    }
-
     event NothingHappened();
 
     receive() external payable {}
 
     fallback() external payable {
         emit NothingHappened();
-    }
-
-    function getAssistant() private returns (Assistant) {
-        if (address(assistant) == address(0)) {
-            // bytes memory keyData = Suave.confidentialRetrieve(
-            //     apiKeyRecord,
-            //     API_KEY
-            // );
-            // string memory apiKey = bytesToString(keyData);
-            // if (bytes(apiKey).length == 0) {
-            //     revert("API key is undefined");
-            // }
-            assistant = new Assistant("", assistantId, address(this));
-        }
-        return assistant;
     }
 
     function updateAPIKeyOnchain(Suave.DataId _apiKeyRecord) public {
@@ -128,21 +111,21 @@ contract Suciphus {
     function submitPromptCallback(
         address player,
         string memory threadId,
-        string memory runId
+        string memory runId,
+        bytes memory data
     ) public {
         // Update the round for the threadId
         threadToRound[threadId] = round;
+        stateNum++;
 
         emit PromptSubmitted(player, threadId, runId, round, season);
+        emit LogBytes("confPrompt", data); // TODO: remove this in prod; for debugging
     }
 
-    // @todo: might want these prompts to be hidden until the pot reset
-    function submitPrompt(
-        string memory prompt,
-        string memory threadId
-    ) public returns (bytes memory) {
-        string memory escapedPrompt = LibString.escapeJSON(prompt);
-        assistant = getAssistant();
+    function submitPrompt() public returns (bytes memory) {
+        require(Suave.isConfidential(), "must call confidentially");
+        bytes memory confPrompt = Context.confidentialInputs();
+        Prompt memory prompt = abi.decode(confPrompt, (Prompt));
 
         // (string memory runId, string memory threadId) = assistant
         //     .createMessageAndRun(msg.sender, threadId, escapedPrompt);
@@ -155,13 +138,11 @@ contract Suciphus {
             abi.encodeWithSelector(
                 this.submitPromptCallback.selector,
                 msg.sender,
-                threadId,
-                "runId"
+                // prompt.threadId,
+                "threadId",
+                "runId",
+                confPrompt
             );
-    }
-
-    function submitPrompt(string memory prompt) public returns (bytes memory) {
-        return submitPrompt(prompt, "");
     }
 
     function getSubmissionFee() public view returns (uint256) {
@@ -177,8 +158,6 @@ contract Suciphus {
     function checkSubmission(string memory threadId) public returns (bool) {
         // Ensure that this thread's submission is within the current round
         require(threadToRound[threadId] == round, "The round has ended");
-
-        assistant = getAssistant();
 
         string memory lastMessage = assistant.getLastMessage(
             msg.sender,
