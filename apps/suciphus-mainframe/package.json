@@ -11,7 +11,7 @@
     "format:check": "pnpm prettier ./src --check"
   },
   "dependencies": {
-    "@flashbots/suave-viem": "0.0.0-main.20240703T054334",
+    "@flashbots/suave-viem": "0.0.0-main.20240703T192338",
     "@radix-ui/react-dropdown-menu": "^2.0.6",
     "@radix-ui/react-slot": "^1.0.2",
     "@repo/suciphus-suapp": "workspace:*",
