@@ -11,5 +11,8 @@
   },
   "dependencies": {
     "viem": "^2.9.25"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
   }
 }

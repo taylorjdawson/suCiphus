@@ -1,11 +1,12 @@
 // import { defineChain } from "@flashbots/suave-viem"
-import { defineChain } from "viem"
+import { defineChain } from "@flashbots/suave-viem"
 
 import { suaveRigil } from "./suave-rigil"
 
 export const suaveLocal = /*#__PURE__*/ defineChain({
-  id: 16813125,
+  id: suaveRigil.id,
   name: "Suave Local",
+  network: "local",
   nativeCurrency: {
     name: "Ether",
     symbol: "ETH",

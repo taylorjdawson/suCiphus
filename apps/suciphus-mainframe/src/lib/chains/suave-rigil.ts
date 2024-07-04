@@ -1,5 +1,4 @@
-import { defineChain } from "@flashbots/suave-viem"
-import { Address } from "viem"
+import { type Address, defineChain } from "@flashbots/suave-viem"
 
 import { formattersSuave } from "./formatters"
 

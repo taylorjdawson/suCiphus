@@ -36,7 +36,7 @@ This Turborepo has some additional tools already setup for you:
 
 To build all apps and packages, run the following command:
 
-```
+```sh
 pnpm build
 ```
 
@@ -46,13 +46,13 @@ pnpm build
 
 Using installed suave-geth
 
-```
+```sh
 suave-geth --suave-dev
 ```
 
 Local suave-geth build
 
-```
+```sh
 ./build/bin/geth \
  --dev \
  --dev.gaslimit 5000000000 \
@@ -74,17 +74,62 @@ Local suave-geth build
  --verbosity 3
 ```
 
+#### Set up Supabase
+
+To get supabase running locally, follow their [self-hosting guide](https://supabase.com/docs/guides/self-hosting/docker).
+
+Make note of these variables from your supabase deployment's environment (or .env file):
+
+- `POSTGRES_PASSWORD`
+- `POSTGRES_HOST`
+- `POSTGRES_DB`
+- `POSTGRES_PORT`
+- `SERVICE_ROLE_KEY`
+
 #### Build & Deploy contracts
 
-```
-cd /packages/suciphus-suapp
+Build contracts & generate typescript bindings:
+
+```sh
+cd ./packages/suciphus-suapp
+pnpm i
 pnpm contracts:build
 pnpm contracts:deploy
+pnpm build
+cd -
+```
+
+Populate environment files:
+
+- *In the admin app's .env file, the `SUPABASE_URL` variable should point to the supabase postgres DB; it's composed of the postgres-related variables we noted earlier:*
+
+  `SUPABASE_URL=postgres://postgres:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}`
+
+  > This example assumes you're using the default user `postgres`; you may need to change this if not self-hosting supabase.
+
+  `SUPABASE_SERVICE_KEY` should be populated with `SERVICE_ROLE_KEY` from earlier.
+
+  ```sh
+  cd apps/admin && cp .env.example .env
+  vim .env
+  cd -
+  ```
+
+- *The user-facing app can use default values:*
+
+  ```sh
+  cd apps/suciphus-mainframe && cp .env.example .env && cd -
+  ```
+
+Install dependencies:
+
+```sh
+pnpm i
 ```
 
 To develop all apps and packages, run the following command:
 
-```
+```sh
 pnpm dev
 ```
 
@@ -99,7 +144,7 @@ Turborepo can use a technique known as [Remote Caching](https://turbo.build/repo
 
 By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup), then enter the following commands:
 
-```
+```sh
 cd my-turborepo
 npx turbo login
 ```
@@ -108,7 +153,7 @@ This will authenticate the Turborepo CLI with your [Vercel account](https://verc
 
 Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
 
-```
+```sh
 npx turbo link
 ```
 
