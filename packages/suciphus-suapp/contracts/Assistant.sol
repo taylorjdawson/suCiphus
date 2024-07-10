@@ -76,35 +76,35 @@ contract Assistant {
         string memory threadId,
         string memory message
     ) public onlyOwner returns (string memory, string memory) {
-        if (bytes(threadId).length == 0) {
-            string memory runId = createThreadAndRun(player, message);
-            return (runId, threadId);
-        } else {
-            Suave.HttpRequest memory request;
-            request.method = "POST";
-            request.url = string.concat(
-                "https://api.openai.com/v1/threads/",
-                threadId,
-                "/messages"
-            );
-            request.headers = new string[](3);
-            request.headers[0] = string.concat(
-                "Authorization: Bearer ",
-                apiKey
-            );
-            request.headers[1] = "Content-Type: application/json";
-            request.headers[2] = "OpenAI-Beta: assistants=v2";
-            request.body = abi.encodePacked(
-                '{"role": "user", "content": "',
-                message,
-                '"}'
-            );
+        // if (bytes(threadId).length == 0) {
+        string memory runId = createThreadAndRun(player, message);
+        return (runId, threadId);
+        // } else {
+        //     Suave.HttpRequest memory request;
+        //     request.method = "POST";
+        //     request.url = string.concat(
+        //         "https://api.openai.com/v1/threads/",
+        //         threadId,
+        //         "/messages"
+        //     );
+        //     request.headers = new string[](3);
+        //     request.headers[0] = string.concat(
+        //         "Authorization: Bearer ",
+        //         apiKey
+        //     );
+        //     request.headers[1] = "Content-Type: application/json";
+        //     request.headers[2] = "OpenAI-Beta: assistants=v2";
+        //     request.body = abi.encodePacked(
+        //         '{"role": "user", "content": "',
+        //         message,
+        //         '"}'
+        //     );
 
-            bytes memory response = Suave.doHTTPRequest(request);
-            // @todo check response
-            string memory runId = createRun(player, threadId);
-            return (runId, threadId);
-        }
+        //     bytes memory response = Suave.doHTTPRequest(request);
+        //     // @todo check response
+        //     string memory runId = createRun(player, threadId);
+        //     return (runId, threadId);
+        // }
     }
 
     function createRun(

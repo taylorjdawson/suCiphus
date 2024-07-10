@@ -1,15 +1,20 @@
-import { Hex, Transport } from "@flashbots/suave-viem"
 import {
+  Address,
+  encodeAbiParameters,
+  encodeFunctionData,
+  Hex,
+  Transport,
+} from "@flashbots/suave-viem"
+import {
+  parseTransactionSuave,
   SuaveTxRequestTypes,
   SuaveWallet,
-  parseTransactionSuave,
   type TransactionRequestSuave,
 } from "@flashbots/suave-viem/chains/utils"
-import { Address, encodeAbiParameters, encodeFunctionData } from "@flashbots/suave-viem"
+import { suciphus as suciphusDeployment } from "@repo/suciphus-suapp"
+import suciphus from "@repo/suciphus-suapp/out/Suciphus.sol/Suciphus.json"
 
 import { suaveLocal } from "./chains/suave-local"
-import { suciphus as suciphusDeployment } from "@repo/suciphus-suapp/dist/suciphus"
-import suciphus from "@repo/suciphus-suapp/out/Suciphus.sol/Suciphus.json"
 
 /* devnet: */
 const KETTLE_ADDRESS = "0xB5fEAfbDD752ad52Afb7e1bD2E40432A485bBB7F"
@@ -22,32 +27,38 @@ type SubmitPromptParams = {
   value?: bigint
   suaveWallet: SuaveWallet<Transport>
   threadId: string
+  nonce: number
 }
 
 export const submitPrompt = async (params: SubmitPromptParams) => {
-  const {
-    prompt,
-    value,
-    threadId,
-    suaveWallet
-  } = params
+  const { prompt, value, threadId, suaveWallet, nonce } = params
+
+  const confidentialInputs = encodeAbiParameters(
+    [
+      {
+        components: [
+          {
+            name: "prompt",
+            type: "string",
+          },
+          {
+            name: "threadId",
+            type: "string",
+          },
+        ],
+        type: "tuple",
+      },
+    ],
+    [
+      {
+        prompt,
+        threadId,
+      },
+    ]
+  )
+
   const suaveTx: TransactionRequestSuave = {
-    confidentialInputs: encodeAbiParameters([{
-      components: [
-        {
-          name: "prompt",
-          type: "string",
-        },
-        {
-          name: "threadId",
-          type: "string",
-        },
-      ],
-      type: "tuple",
-    }], [{
-      prompt,
-      threadId,
-    }]),
+    confidentialInputs,
     kettleAddress: KETTLE_ADDRESS,
     to: suciphusDeployment.address,
     gas: 500000n,
@@ -56,7 +67,7 @@ export const submitPrompt = async (params: SubmitPromptParams) => {
       abi: suciphus.abi,
       functionName: "submitPrompt",
     }),
-    value,
+    nonce,
   }
 
   const tx = await suaveWallet.signTransaction(suaveTx)

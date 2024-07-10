@@ -44,7 +44,7 @@ contract Suciphus is Suapp {
         string memory _assistantId
     */ {
         // apiKey = _apiKey;
-        assistant = new Assistant("apiKey", "assistantId", address(this));
+        assistant = new Assistant("apiKey", assistantId, address(this));
     }
 
     // Define debugging events
@@ -62,7 +62,8 @@ contract Suciphus is Suapp {
 
     event PromptSubmitted(
         address indexed player,
-        string indexed threadId,
+        // @todo: possible make this an indexed field to make it easier to query
+        string threadId,
         string runId,
         uint256 round,
         uint256 season
@@ -116,7 +117,7 @@ contract Suciphus is Suapp {
     ) public {
         // Update the round for the threadId
         threadToRound[threadId] = round;
-        stateNum++;
+        // @todo potentially store the threadId in the contract by player address
 
         emit PromptSubmitted(player, threadId, runId, round, season);
         emit LogBytes("confPrompt", data); // TODO: remove this in prod; for debugging
@@ -127,20 +128,15 @@ contract Suciphus is Suapp {
         bytes memory confPrompt = Context.confidentialInputs();
         Prompt memory prompt = abi.decode(confPrompt, (Prompt));
 
-        // (string memory runId, string memory threadId) = assistant
-        //     .createMessageAndRun(msg.sender, threadId, escapedPrompt);
-        // runId = "runId";
-        // require(
-        //     msg.value >= SUBMISSION_FEE,
-        //     "Insufficient funds sent for submission"
-        // );
+        (string memory runId, string memory threadId) = assistant
+            .createMessageAndRun(msg.sender, prompt.threadId, prompt.prompt);
+
         return
             abi.encodeWithSelector(
                 this.submitPromptCallback.selector,
                 msg.sender,
-                // prompt.threadId,
-                "threadId",
-                "runId",
+                threadId,
+                runId,
                 confPrompt
             );
     }
