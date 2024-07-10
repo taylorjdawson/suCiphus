@@ -27,6 +27,7 @@ else
     echo "ABI extracted successfully."
 fi
 
+mkdir -p src
 cd src
 
 # Write the address and ABI to suciphus.ts
