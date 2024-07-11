@@ -4,7 +4,7 @@ pragma solidity ^0.8.19;
 import "forge-std/Test.sol";
 import "suave-std/Test.sol";
 
-import "../contracts/Assistant.sol";
+import {Assistant} from "../contracts/Assistant.sol";
 
 contract AssistantTest is Test, SuaveEnabled {
     address owner = address(this);
