@@ -43,7 +43,7 @@ contract Assistant {
     function createThreadAndRun(
         address player,
         string memory message
-    ) public onlyOwner returns (string memory) {
+    ) public onlyOwner returns (string memory runId, string memory threadId) {
         Suave.HttpRequest memory request;
         request.method = "POST";
         request.url = "https://api.openai.com/v1/threads/runs";
@@ -60,25 +60,20 @@ contract Assistant {
         );
 
         bytes memory response = Suave.doHTTPRequest(request);
-
         JSONParserLib.Item memory item = string(response).parse();
-        string memory runId = item.at('"id"').value();
-        string memory threadId = item.at('"thread_id"').value();
-
+        runId = item.at('"id"').value();
+        threadId = item.at('"thread_id"').value();
         threadIds[threadId] = player;
         saveThread(player, threadId);
-
-        return runId;
     }
 
     function createMessageAndRun(
         address player,
-        string memory threadId,
+        string memory _threadId,
         string memory message
-    ) public onlyOwner returns (string memory, string memory) {
+    ) public onlyOwner returns (string memory runId, string memory threadId) {
         // if (bytes(threadId).length == 0) {
-        string memory runId = createThreadAndRun(player, message);
-        return (runId, threadId);
+        (runId, threadId) = createThreadAndRun(player, message);
         // } else {
         //     Suave.HttpRequest memory request;
         //     request.method = "POST";

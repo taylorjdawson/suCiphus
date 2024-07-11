@@ -13,7 +13,8 @@ contract Suciphus is Suapp {
     using strings for *;
 
     Suave.DataId apiKeyRecord;
-    string public API_KEY = "API_KEY";
+    string public API_KEY =
+        "sk-proj-ufkeCiycsF5TUKMdIkt0T3BlbkFJyRprMQ7rasoei1f7iJ5S";
 
     // string private apiKey;
     Assistant private assistant;
@@ -44,7 +45,7 @@ contract Suciphus is Suapp {
         string memory _assistantId
     */ {
         // apiKey = _apiKey;
-        assistant = new Assistant("apiKey", assistantId, address(this));
+        assistant = new Assistant(API_KEY, assistantId, address(this));
     }
 
     // Define debugging events
@@ -110,17 +111,11 @@ contract Suciphus is Suapp {
     }
 
     function submitPromptCallback(
-        address player,
-        string memory threadId,
-        string memory runId,
-        bytes memory data
-    ) public {
+        string memory threadId
+    ) public emitOffchainLogs {
         // Update the round for the threadId
         threadToRound[threadId] = round;
         // @todo potentially store the threadId in the contract by player address
-
-        emit PromptSubmitted(player, threadId, runId, round, season);
-        emit LogBytes("confPrompt", data); // TODO: remove this in prod; for debugging
     }
 
     function submitPrompt() public returns (bytes memory) {
@@ -129,15 +124,15 @@ contract Suciphus is Suapp {
         Prompt memory prompt = abi.decode(confPrompt, (Prompt));
 
         (string memory runId, string memory threadId) = assistant
-            .createMessageAndRun(msg.sender, prompt.threadId, prompt.prompt);
+            .createThreadAndRun(msg.sender, prompt.prompt);
+
+        emit PromptSubmitted(msg.sender, threadId, runId, round, season);
+        emit LogString("confPrompt", prompt.prompt); // TODO: remove this in prod; for debugging
 
         return
             abi.encodeWithSelector(
                 this.submitPromptCallback.selector,
-                msg.sender,
-                threadId,
-                runId,
-                confPrompt
+                threadId
             );
     }
 
