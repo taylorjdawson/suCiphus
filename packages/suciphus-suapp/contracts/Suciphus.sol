@@ -133,7 +133,7 @@ contract Suciphus is Suapp {
         // @todo potentially store the threadId in the contract by player address
     }
 
-    function submitPrompt() public emitOffchainLogs returns (bytes memory) {
+    function submitPrompt() public returns (bytes memory) {
         require(Suave.isConfidential(), "must call confidentially");
         bytes memory confPrompt = Context.confidentialInputs();
         Prompt memory prompt = abi.decode(confPrompt, (Prompt));
