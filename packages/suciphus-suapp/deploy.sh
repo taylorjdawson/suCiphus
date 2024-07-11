@@ -1,5 +1,17 @@
 #!/bin/bash
 
+# OPENAI_API_KEY should be present here:
+source ../../apps/admin/.env
+
+# check env
+checkEnv() {
+    if [ -z "$1" ]; then
+        echo "$2 is not set. Please set it in your environment before re-running the script."
+        exit 1
+    fi
+}
+checkEnv "$OPENAI_API_KEY" "OPENAI_API_KEY"
+
 # Run the build and deployment command, capture the output
 output=$(suave-geth spell deploy ./Suciphus.sol:Suciphus 2>&1 | tee /dev/tty)
 
@@ -40,3 +52,7 @@ export const suciphus = {
 }" > suciphus.ts
 
 echo "Address and ABI written to /src/suciphus.ts"
+
+# set API key by calling the contract with suave-geth spell
+echo "Uploading OpenAI API key to SUAVE..."
+suave-geth spell conf-request --confidential-input $OPENAI_API_KEY $deployed_address "registerAPIKeyOffchain()"

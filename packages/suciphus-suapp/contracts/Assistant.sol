@@ -3,47 +3,23 @@ pragma solidity ^0.8.19;
 
 import "suave-std/suavelib/Suave.sol";
 import "solady/src/utils/JSONParserLib.sol";
-import "forge-std/console.sol";
-import "forge-std/Vm.sol";
 
+/** Transient contract. Should only be deployed inside a confidential offchain request. */
 contract Assistant {
     using JSONParserLib for *;
 
-    string private apiKey;
-    string private assistantId;
-    mapping(string => address) public threadIds;
-    address private owner;
+    string public apiKey;
+    string assistantId;
 
-    modifier onlyOwner() {
-        require(msg.sender == owner, "Caller is not the owner");
-        _;
-    }
-
-    modifier verifyThreadOwner(string memory threadId, address player) {
-        if (bytes(threadId).length != 0) {
-            // Check if threadId is not empty
-            require(
-                threadIds[threadId] == player,
-                "Thread ID not found for player address"
-            );
-        }
-        _;
-    }
-
-    constructor(
-        string memory _apiKey,
-        string memory _assistantId,
-        address _owner
-    ) {
+    constructor(string memory _apiKey, string memory _assistantId) {
         apiKey = _apiKey;
         assistantId = _assistantId;
-        owner = _owner;
     }
 
     function createThreadAndRun(
         address player,
-        string memory message
-    ) public onlyOwner returns (string memory runId, string memory threadId) {
+        string calldata message
+    ) public returns (string memory runId, string memory threadId) {
         Suave.HttpRequest memory request;
         request.method = "POST";
         request.url = "https://api.openai.com/v1/threads/runs";
@@ -63,15 +39,17 @@ contract Assistant {
         JSONParserLib.Item memory item = string(response).parse();
         runId = item.at('"id"').value();
         threadId = item.at('"thread_id"').value();
-        threadIds[threadId] = player;
+        // threadRecordId = setThreadPlayerRecord(threadId, player); // TODO: come back to this later
+        // (need a way to map threadId to player;
+        // maybe this responsibility should be lifted up to the Suciphus contract)
         saveThread(player, threadId);
     }
 
     function createMessageAndRun(
         address player,
-        string memory _threadId,
-        string memory message
-    ) public onlyOwner returns (string memory runId, string memory threadId) {
+        string calldata _threadId,
+        string calldata message
+    ) public returns (string memory runId, string memory threadId) {
         // if (bytes(threadId).length == 0) {
         (runId, threadId) = createThreadAndRun(player, message);
         // } else {
@@ -105,7 +83,7 @@ contract Assistant {
     function createRun(
         address player,
         string memory threadId
-    ) public onlyOwner returns (string memory) {
+    ) public returns (string memory) {
         Suave.HttpRequest memory request;
         request.method = "POST";
         request.url = string.concat(
@@ -134,7 +112,7 @@ contract Assistant {
         string memory threadId,
         string memory runId,
         string memory limit
-    ) public onlyOwner returns (string[] memory) {
+    ) public returns (string[] memory) {
         Suave.HttpRequest memory request;
         request.method = "GET";
 
@@ -178,21 +156,19 @@ contract Assistant {
     function getMessages(
         address player,
         string memory threadId
-    ) public onlyOwner returns (string[] memory) {
+    ) public returns (string[] memory) {
         return getMessages(player, threadId, "", "");
     }
 
     function getLastMessage(
         address player,
         string memory threadId
-    ) public onlyOwner returns (string memory) {
+    ) public returns (string memory) {
+        require(msg.sender == player, "Only the player can call this function");
         return getMessages(player, threadId, "", "1")[0];
     }
 
-    function saveThread(
-        address player,
-        string memory threadId
-    ) public onlyOwner {
+    function saveThread(address player, string memory threadId) internal {
         Suave.HttpRequest memory request;
         request.method = "POST";
         // @todo: change to production url
