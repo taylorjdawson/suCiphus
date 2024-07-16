@@ -1,5 +1,4 @@
-import { defineChain } from "@flashbots/suave-viem"
-import { Address } from "viem"
+import { type Address, defineChain } from "@flashbots/suave-viem"
 
 import { formattersSuave } from "./formatters"
 
@@ -81,9 +80,9 @@ export const suaveRigil = /*#__PURE__*/ defineChain(
       },
     },
     testnet: true,
-  },
-  {
-    formatters: formattersSuave,
-    // serializers: serializersSuave,
   }
+  // {
+  //   formatters: formattersSuave,
+  //   // serializers: serializersSuave,
+  // }
 )

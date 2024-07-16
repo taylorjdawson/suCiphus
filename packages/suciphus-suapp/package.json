@@ -1,0 +1,23 @@
+{
+  "name": "@repo/suciphus-suapp",
+  "version": "0.0.1",
+  "private": true,
+  "license": "MIT",
+  "author": "x3y.in",
+  "main": "dist/suciphus.js",
+  "types": "dist/suciphus.d.ts",
+  "scripts": {
+    "dev": "chokidar 'contracts/**/*.sol' -c 'pnpm run rebuild-deploy'",
+    "build": "tsc",
+    "contracts:build": "forge build",
+    "contracts:deploy": "./deploy.sh",
+    "rebuild-deploy": "pnpm run contracts:build && pnpm run contracts:deploy && pnpm build"
+  },
+  "dependencies": {
+    "viem": "^2.9.25"
+  },
+  "devDependencies": {
+    "chokidar-cli": "^3.0.0",
+    "typescript": "^5.3.3"
+  }
+}

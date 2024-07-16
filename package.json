@@ -6,6 +6,7 @@
     "dev": "turbo dev",
     "lint": "turbo lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "suave-geth": "suave-geth --suave.dev",
     "contracts:deploy": "suave-geth spell deploy ./packages/suciphus-suapp/Suciphus.sol:Suciphus",
     "forge:deploy": "turbo run forge:deploy --filter=forge",
     "forge:test": "dotenv-run -- forge test  --ffi --root packages/suciphus-suapp",
@@ -16,9 +17,9 @@
     "@repo/eslint-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
     "prettier": "^3.2.5",
-    "turbo": "latest"
+    "turbo": "^2.0.5"
   },
-  "packageManager": "pnpm@8.9.0",
+  "packageManager": "pnpm@9.4.0+sha256.b6fd0bfda555e7e584ad7e56b30c68b01d5a04f9ee93989f4b93ca8473c49c74",
   "engines": {
     "node": ">=18"
   }

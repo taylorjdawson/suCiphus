@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "dotenv-run -p .env -- next dev",
+    "dev": "dotenv-run -p .env -- next dev -p 3000",
     "build": "dotenv-run -p .env -- next build",
     "start": "dotenv-run -p .env -- next start",
     "lint": "next lint",
@@ -11,6 +11,7 @@
     "format:check": "pnpm prettier ./src --check"
   },
   "dependencies": {
+    "@radix-ui/react-collapsible": "^1.1.0",
     "@radix-ui/react-dropdown-menu": "^2.0.6",
     "@radix-ui/react-separator": "^1.0.3",
     "@radix-ui/react-slot": "^1.0.2",

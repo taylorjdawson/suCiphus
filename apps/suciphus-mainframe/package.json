@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 3001",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -11,9 +11,10 @@
     "format:check": "pnpm prettier ./src --check"
   },
   "dependencies": {
-    "@flashbots/suave-viem": "0.0.0-main.20240221T210204",
+    "@flashbots/suave-viem": "0.0.0-main.20240703T192338",
     "@radix-ui/react-dropdown-menu": "^2.0.6",
     "@radix-ui/react-slot": "^1.0.2",
+    "@repo/suciphus-suapp": "workspace:*",
     "@t3-oss/env-nextjs": "^0.9.2",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
@@ -25,7 +26,6 @@
     "tailwind-merge": "^2.2.1",
     "tailwindcss-animate": "^1.0.7",
     "utils": "link:@flashbots/suave-viem/chains/utils",
-    "viem": "^2.9.25",
     "zod": "^3.22.4"
   },
   "devDependencies": {

@@ -1,9 +1,6 @@
 import {
   Address,
-  Chain,
-  createPublicClient,
-  createWalletClient,
-  custom,
+  // Chain,
   // createPublicClient,
   // createWalletClient,
   // custom,
@@ -12,49 +9,18 @@ import {
   // EIP1193Provider,
   encodeFunctionData,
   formatEther,
-  getFunctionSelector,
   Hex,
-  http,
-  PublicClient,
-  WalletClient,
 } from "@flashbots/suave-viem"
-import { suaveRigil } from "@flashbots/suave-viem/chains"
 import {
-  getSuaveProvider,
   getSuaveWallet,
   SuaveProvider,
   SuaveWallet,
   TransactionReceiptSuave,
   TransactionRequestSuave,
-  TransactionSuave,
 } from "@flashbots/suave-viem/chains/utils"
-// import { createPublicClient, createWalletClient, custom, http } from "viem"
-import { EIP1193Provider } from "viem"
-
-// import { defineChain } from "viem/utils"
+import { Chain, createPublicClient, http, PublicClient } from "viem"
 
 import "viem/window"
-
-export const suaveLocal = defineChain({
-  // ...suaveRigil,
-  id: 1_337,
-  name: "Localhost",
-  network: "localhost",
-  nativeCurrency: {
-    decimals: 18,
-    name: "Ether",
-    symbol: "ETH",
-  },
-  rpcUrls: {
-    default: { http: ["http://127.0.0.1:8545"] },
-    public: { http: ["http://127.0.0.1:8545"] },
-  },
-})
-
-const client = createWalletClient({
-  chain: suaveLocal,
-  transport: custom(window.ethereum!),
-})
 
 let publicClient: PublicClient | null = null
 
