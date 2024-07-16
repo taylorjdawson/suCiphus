@@ -1,20 +1,15 @@
 import {
-  Address,
   encodeAbiParameters,
   encodeFunctionData,
-  Hex,
   Transport,
 } from "@flashbots/suave-viem"
 import {
   parseTransactionSuave,
-  SuaveTxRequestTypes,
   SuaveWallet,
   type TransactionRequestSuave,
 } from "@flashbots/suave-viem/chains/utils"
 import { suciphus as suciphusDeployment } from "@repo/suciphus-suapp"
 import suciphus from "@repo/suciphus-suapp/out/Suciphus.sol/Suciphus.json"
-
-import { suaveLocal } from "./chains/suave-local"
 
 /* devnet: */
 const KETTLE_ADDRESS = "0xB5fEAfbDD752ad52Afb7e1bD2E40432A485bBB7F"
@@ -61,7 +56,7 @@ export const submitPrompt = async (params: SubmitPromptParams) => {
     confidentialInputs,
     kettleAddress: KETTLE_ADDRESS,
     to: suciphusDeployment.address,
-    gas: 500000n,
+    gas: 30n * 1000n * 1000n,
     type: "0x43",
     data: encodeFunctionData({
       abi: suciphus.abi,

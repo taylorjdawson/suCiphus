@@ -4,10 +4,15 @@ pragma solidity ^0.8.19;
 import "forge-std/Test.sol";
 import "suave-std/Test.sol";
 
-import "../contracts/Assistant.sol";
+import {Assistant} from "../contracts/Assistant.sol";
 
 contract AssistantTest is Test, SuaveEnabled {
     address owner = address(this);
+
+    function testTransientContract() public {
+        Assistant assistant = new Assistant("apiKey", "assistantId");
+        assertEq(assistant.apiKey(), "apiKey", "API key should be set.");
+    }
 
     // function testCreateThreadAndRun() public {
     //     Assistant assistant = getAssistant();
@@ -55,12 +60,6 @@ contract AssistantTest is Test, SuaveEnabled {
     //     string memory runId = assistant.createRun(testPlayer);
     //     assertEq(runId, "expectedRunId", "Run ID did not match expected value.");
     // }
-
-    function getAssistant() public returns (Assistant assistant) {
-        string memory apiKey = getApiKey();
-        string memory assistantId = getAssistantId();
-        assistant = new Assistant(apiKey, assistantId, owner);
-    }
 
     function getTestPlayer() public returns (address testPlayer) {
         testPlayer = makeAddr("testPlayer");

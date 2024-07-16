@@ -2,10 +2,11 @@
 pragma solidity ^0.8.19;
 
 import "solidity-stringutils/strings.sol";
+import {Suave} from "suave-std/suavelib/Suave.sol";
 import "suave-std/Context.sol";
 import {Suapp} from "suave-std/Suapp.sol";
 import "solady/src/utils/LibString.sol";
-import "./Assistant.sol";
+import {Assistant} from "./Assistant.sol";
 import "forge-std/console.sol";
 import "openzeppelin-contracts/contracts/utils/math/Math.sol";
 
@@ -13,13 +14,8 @@ contract Suciphus is Suapp {
     using strings for *;
 
     Suave.DataId apiKeyRecord;
-    string public API_KEY = "API_KEY";
-
-    // string private apiKey;
-    Assistant private assistant;
 
     // @todo: set this with conf inputs or constructor
-    string private assistantId = "asst_RuBcImIY1V98C7I8HOu3D5pu";
     uint256 public SUBMISSION_FEE = 0.01 ether;
 
     // This percentage represents the portion of funds retained by the contract to support the dapp's operations
@@ -38,13 +34,15 @@ contract Suciphus is Suapp {
     // This mapping is used to check if a submission is within the valid round timeframe when determining success.
     mapping(string => uint256) public threadToRound;
 
-    constructor()
-    /*
-        string memory _apiKey,
-        string memory _assistantId
-    */ {
-        // apiKey = _apiKey;
-        assistant = new Assistant("apiKey", assistantId, address(this));
+    address private owner;
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Only the owner can call this function");
+        _;
+    }
+
+    constructor() {
+        owner = msg.sender;
     }
 
     // Define debugging events
@@ -84,11 +82,29 @@ contract Suciphus is Suapp {
         emit NothingHappened();
     }
 
-    function updateAPIKeyOnchain(Suave.DataId _apiKeyRecord) public {
+    function getApiKey() public returns (string memory) {
+        require(isApiKeySet(), "API key not set");
+        bytes memory apiKey = Suave.confidentialRetrieve(
+            apiKeyRecord,
+            "api_key"
+        );
+
+        return string(apiKey);
+    }
+
+    function getAssistant() public returns (Assistant assistant) {
+        string memory apiKey = getApiKey();
+        string memory assistantId = "asst_8EN1Avo8QkET8LDwKjLeitky";
+        // TODO: get the assistant id from confStore as well
+        assistant = new Assistant(apiKey, assistantId);
+    }
+
+    function updateAPIKeyOnchain(Suave.DataId _apiKeyRecord) public onlyOwner {
         apiKeyRecord = _apiKeyRecord;
     }
 
-    function registerAPIKeyOffchain() public returns (bytes memory) {
+    function registerAPIKeyOffchain() public onlyOwner returns (bytes memory) {
+        require(Suave.isConfidential(), "must call confidentially");
         bytes memory keyData = Context.confidentialInputs();
 
         address[] memory peekers = new address[](1);
@@ -98,9 +114,9 @@ contract Suciphus is Suapp {
             0,
             peekers,
             peekers,
-            "api_key"
+            "suciphus:openai_api_key"
         );
-        Suave.confidentialStore(record.id, API_KEY, keyData);
+        Suave.confidentialStore(record.id, "api_key", keyData);
 
         return
             abi.encodeWithSelector(
@@ -110,17 +126,11 @@ contract Suciphus is Suapp {
     }
 
     function submitPromptCallback(
-        address player,
-        string memory threadId,
-        string memory runId,
-        bytes memory data
-    ) public {
+        string memory threadId
+    ) public emitOffchainLogs {
         // Update the round for the threadId
         threadToRound[threadId] = round;
         // @todo potentially store the threadId in the contract by player address
-
-        emit PromptSubmitted(player, threadId, runId, round, season);
-        emit LogBytes("confPrompt", data); // TODO: remove this in prod; for debugging
     }
 
     function submitPrompt() public returns (bytes memory) {
@@ -128,16 +138,17 @@ contract Suciphus is Suapp {
         bytes memory confPrompt = Context.confidentialInputs();
         Prompt memory prompt = abi.decode(confPrompt, (Prompt));
 
+        Assistant assistant = getAssistant();
+
         (string memory runId, string memory threadId) = assistant
-            .createMessageAndRun(msg.sender, prompt.threadId, prompt.prompt);
+            .createThreadAndRun(msg.sender, prompt.prompt);
+
+        emit PromptSubmitted(msg.sender, threadId, runId, round, season);
 
         return
             abi.encodeWithSelector(
                 this.submitPromptCallback.selector,
-                msg.sender,
-                threadId,
-                runId,
-                confPrompt
+                threadId
             );
     }
 
@@ -150,10 +161,12 @@ contract Suciphus is Suapp {
     }
 
     // Takes the message sender and then checks to see the result
-    // of their prompt
+    // of their prompt.
     function checkSubmission(string memory threadId) public returns (bool) {
         // Ensure that this thread's submission is within the current round
         require(threadToRound[threadId] == round, "The round has ended");
+
+        Assistant assistant = getAssistant();
 
         string memory lastMessage = assistant.getLastMessage(
             msg.sender,
@@ -241,5 +254,15 @@ contract Suciphus is Suapp {
             }
         }
         return string(bLower);
+    }
+
+    function isApiKeySet() public view returns (bool isSet) {
+        // assembly allows us to compare DataId (bytes16) to zero value
+        assembly {
+            // Load the value of apiKeyRecord from storage
+            let record := sload(apiKeyRecord.slot)
+            // Check if apiKeyRecord is not equal to bytes16(0)
+            isSet := iszero(iszero(record))
+        }
     }
 }

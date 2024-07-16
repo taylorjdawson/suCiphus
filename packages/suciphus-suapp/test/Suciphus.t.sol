@@ -4,7 +4,7 @@ pragma solidity ^0.8.19;
 import "forge-std/Test.sol";
 import "suave-std/Test.sol";
 
-import "../contracts/Suciphus.sol";
+import {Suciphus} from "../contracts/Suciphus.sol";
 
 contract SuciphusTest is Test, SuaveEnabled {
     // Suciphus suciphus;
