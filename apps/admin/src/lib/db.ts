@@ -30,6 +30,11 @@ export const newThread = async (
     .from("threads")
     .insert([thread])
     .select()
+  if (error) {
+    // throw error
+    console.error("Failed to insert thread:", error)
+  }
+  // return objectToCamel<Thread.Row[]>(data) as Thread.Thread[]
 }
 
 export const getThreads = async (
