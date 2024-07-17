@@ -66,6 +66,11 @@ contract Suciphus is Suapp, WithUtils {
         _;
     }
 
+    modifier confidential() {
+        require(Suave.isConfidential(), "must call confidentially");
+        _;
+    }
+
     constructor() {
         owner = msg.sender;
     }
@@ -75,6 +80,7 @@ contract Suciphus is Suapp, WithUtils {
     event LogAddress(string label, address value);
     event LogUint(string label, uint256 value);
     event LogBytes(string label, bytes value);
+    event LogStrings(string label, string[] values);
 
     event SuccessfulSubmission(
         address indexed player,
@@ -144,8 +150,12 @@ contract Suciphus is Suapp, WithUtils {
         assistantIdRecord = _assistantIdRecord;
     }
 
-    function registerAuthOffchain() public onlyOwner returns (bytes memory) {
-        require(Suave.isConfidential(), "must call confidentially");
+    function registerAuthOffchain()
+        public
+        onlyOwner
+        confidential
+        returns (bytes memory)
+    {
         bytes memory authData = Context.confidentialInputs();
         AuthRegistration memory auth = abi.decode(authData, (AuthRegistration));
 
@@ -196,8 +206,7 @@ contract Suciphus is Suapp, WithUtils {
         threadToPlayer[id(threadId)] = player;
     }
 
-    function submitPrompt() public returns (bytes memory) {
-        require(Suave.isConfidential(), "must call confidentially");
+    function submitPrompt() public confidential returns (bytes memory) {
         bytes memory confPrompt = Context.confidentialInputs();
         Prompt memory prompt = abi.decode(confPrompt, (Prompt));
 
@@ -222,7 +231,19 @@ contract Suciphus is Suapp, WithUtils {
         return HOUSE_CUT_PERCENTAGE;
     }
 
+    function onReadMessages() public emitOffchainLogs {}
+
+    function readMessages() public confidential returns (bytes memory) {
+        bytes memory confInputs = Context.confidentialInputs();
+        string memory threadId = abi.decode(confInputs, (Prompt)).threadId;
+        Assistant assistant = getAssistant();
+        string[] memory messages = assistant.getMessages(threadId);
+        emit LogStrings("messages", messages);
+        return abi.encodeWithSelector(this.onReadMessages.selector);
+    }
+
     /// Returns true if submission returned an ethereum address.
+    /// TODO: move argument to conf store
     function checkSubmission(string memory threadId) public returns (bool) {
         // TODO: add onlyThreadOwner here and elsewhere
         // Ensure that this thread's submission is within the current round
@@ -230,10 +251,7 @@ contract Suciphus is Suapp, WithUtils {
 
         Assistant assistant = getAssistant();
 
-        string memory lastMessage = assistant.getLastMessage(
-            msg.sender,
-            threadId
-        );
+        string memory lastMessage = assistant.getLastMessage(threadId);
 
         string memory lowerLastMessage = toLower(lastMessage);
 

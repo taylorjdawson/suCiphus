@@ -2,9 +2,11 @@ import {
   encodeAbiParameters,
   encodeFunctionData,
   Transport,
+  type Hex,
 } from "@flashbots/suave-viem"
 import {
   parseTransactionSuave,
+  SuaveProvider,
   SuaveWallet,
   type TransactionRequestSuave,
 } from "@flashbots/suave-viem/chains/utils"
@@ -25,10 +27,8 @@ type SubmitPromptParams = {
   nonce: number
 }
 
-export const submitPrompt = async (params: SubmitPromptParams) => {
-  const { prompt, value, threadId, suaveWallet, nonce } = params
-
-  const confidentialInputs = encodeAbiParameters(
+const encodePrompt = (prompt: string, threadId: string) => {
+  return encodeAbiParameters(
     [
       {
         components: [
@@ -43,30 +43,56 @@ export const submitPrompt = async (params: SubmitPromptParams) => {
         ],
         type: "tuple",
       },
-    ],
-    [
+    ], [
       {
         prompt,
         threadId,
       },
     ]
   )
+}
 
-  const suaveTx: TransactionRequestSuave = {
-    confidentialInputs,
-    kettleAddress: KETTLE_ADDRESS,
-    to: suciphusDeployment.address,
-    gas: 30n * 1000n * 1000n,
-    type: "0x43",
+const defaultRequest = {
+  kettleAddress: KETTLE_ADDRESS,
+  gas: 30n * 1000n * 1000n,
+  type: "0x43",
+  to: suciphusDeployment.address,
+}
+
+const suciphusRequest = ({args, confidentialInputs, functionName, nonce}: {functionName: string, confidentialInputs: Hex, args?: any[], nonce?: number}) => {
+  return {
+    ...defaultRequest,
     data: encodeFunctionData({
       abi: suciphus.abi,
-      functionName: "submitPrompt",
+      functionName,
+      args,
     }),
+    confidentialInputs,
     nonce,
-  }
+  } as TransactionRequestSuave
+}
+
+export const submitPrompt = async (params: SubmitPromptParams) => {
+  const { prompt, threadId, suaveWallet, nonce } = params
+
+  const suaveTx = suciphusRequest({
+    functionName: "submitPrompt",
+    confidentialInputs: encodePrompt(prompt, threadId),
+    nonce,
+  })
 
   const tx = await suaveWallet.signTransaction(suaveTx)
   console.debug("signed tx", tx)
   console.debug("parsed signed tx", parseTransactionSuave(tx))
   return await suaveWallet.sendRawTransaction({ serializedTransaction: tx })
+}
+
+export const readMessages = async (params: SubmitPromptParams) => {
+  const { threadId, suaveWallet, nonce } = params
+  const tx = suciphusRequest({
+    functionName: "readMessages",
+    confidentialInputs: encodePrompt("", threadId),
+    nonce,
+  })
+  return await suaveWallet.sendTransaction(tx)
 }

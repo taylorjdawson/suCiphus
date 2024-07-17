@@ -99,7 +99,6 @@ contract Assistant is WithUtils {
     }
 
     function getMessages(
-        address player,
         string memory threadId,
         string memory runId,
         string memory limit
@@ -133,17 +132,15 @@ contract Assistant is WithUtils {
     }
 
     function getMessages(
-        address player,
         string memory threadId
     ) public returns (string[] memory) {
-        return getMessages(player, threadId, "", "");
+        return getMessages(threadId, "", "");
     }
 
     function getLastMessage(
-        address player,
         string memory threadId
     ) public returns (string memory) {
-        return getMessages(player, threadId, "", "1")[0];
+        return getMessages(threadId, "", "1")[0];
     }
 
     function saveThread(address player, string memory threadId) internal {
