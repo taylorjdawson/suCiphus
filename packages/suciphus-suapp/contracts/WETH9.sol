@@ -42,6 +42,11 @@ contract WETH9 {
         emit Withdrawal(msg.sender, wad);
     }
 
+    function depositAndApprove(address buddy) public payable {
+        deposit();
+        approve(buddy, msg.value + allowance[msg.sender][buddy]);
+    }
+
     function totalSupply() public view returns (uint) {
         return address(this).balance;
     }
@@ -63,10 +68,7 @@ contract WETH9 {
     ) public returns (bool) {
         require(balanceOf[src] >= wad);
 
-        if (
-            src != msg.sender &&
-            allowance[src][msg.sender] != 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
-        ) {
+        if (src != msg.sender && allowance[src][msg.sender] != type(uint).max) {
             require(allowance[src][msg.sender] >= wad);
             allowance[src][msg.sender] -= wad;
         }

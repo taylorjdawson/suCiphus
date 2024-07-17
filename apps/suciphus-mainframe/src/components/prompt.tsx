@@ -16,7 +16,7 @@ import {
 import suciphus from "@repo/suciphus-suapp/out/Suciphus.sol/Suciphus.json"
 import { suciphus as suciphusDeployment } from "@repo/suciphus-suapp/src/suciphus"
 
-import { readMessages, submitPrompt } from "@/lib/suciphus"
+import { mintTokens, readMessages, submitPrompt } from "@/lib/suciphus"
 
 import { Input } from "./ui/input"
 import { useWallet } from "./wallet-provider"
@@ -148,9 +148,24 @@ export const Prompt = ({ className }: PromptProps) => {
     return prompts.includes(msg)
   }
 
+  const doMintTokens = async () => {
+    if (suaveWallet) {
+      const nonce = await getUserNonce()
+      const txHash = await mintTokens({
+        suaveWallet,
+        value: parseEther("0.1"),
+        nonce,
+      })
+      setPendingTxs([...pendingTxs, txHash])
+    }
+  }
+
   return (
     <div className={`w-full ${className}`}>
       <div className='text-sm'>
+        <div>
+          <button onClick={doMintTokens}>Mint Tokens</button>
+        </div>
         {/* {threadId && <div>Thread ID: {threadId}</div>} */}
         {pendingTxs.length > 0 && (
           // TODO: make this a floating notification
