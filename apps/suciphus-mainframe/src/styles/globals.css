@@ -70,7 +70,15 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
+  }
+
+  .header {
+    display: flex;
+    position: absolute;
+    top: 0;
+    left: 0;
   }
 }

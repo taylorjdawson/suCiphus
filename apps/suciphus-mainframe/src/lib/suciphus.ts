@@ -113,7 +113,7 @@ export const mintTokens = async (params: MintTokensParams) => {
     value,
     type: "0x0",
     to: wethDeployment.address,
-    gas: 50n * 1000n,
+    gas: 150n * 1000n,
   }
   return await suaveWallet.sendTransaction(tx)
 }

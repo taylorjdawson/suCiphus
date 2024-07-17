@@ -7,8 +7,10 @@ import {
   CustomTransport,
   decodeEventLog,
   encodeFunctionData,
+  formatEther,
   Hash,
   Hex,
+  hexToBigInt,
   hexToString,
   HttpTransport,
   parseEther,
@@ -23,6 +25,8 @@ import { Input } from "./ui/input"
 import { useWallet } from "./wallet-provider"
 import { removeQuotes } from '@/lib/utils'
 
+const ATTEMPTS_PER_ETH = 100n
+
 export interface PromptProps {
   className?: string
 }
@@ -34,6 +38,50 @@ export const Prompt = ({ className }: PromptProps) => {
   const [messages, setMessages] = useState<string[]>([])
   const [pendingTxs, setPendingTxs] = useState<Hash[]>([])
   const [threadId, setThreadId] = useState<string>()
+  const [balance, setBalance] = useState<bigint>()
+
+  useEffect(() => {
+    if (suaveWallet) {
+      fetchTokenBalance()
+    }
+    if (publicClient) {
+      publicClient
+        .getContractEvents({
+          abi: suciphus.abi,
+          address: suciphusDeployment.address,
+        })
+        .then((logs) => {
+          console.debug({ logs })
+        })
+      publicClient.watchPendingTransactions({
+        onTransactions: async (txHashes) => {
+          // await fetchState()
+          await fetchPendingReceipts(txHashes)
+          await fetchTokenBalance()
+        },
+      })
+    }
+  }, [publicClient, pendingTxs, suaveWallet])
+
+  const fetchTokenBalance = async () => {
+    if (suaveWallet && publicClient) {
+      const newBalance = await publicClient.call({
+        to: wethDeployment.address,
+        data: encodeFunctionData({
+          functionName: "balanceOf",
+          args: [suaveWallet.account.address],
+          abi: weth.abi,
+        }),
+        type: "0x0",
+      })
+      if (newBalance.data) {
+        console.debug("new balance data", newBalance.data)
+        const nb = hexToBigInt(newBalance.data)
+        setBalance(nb)
+        console.debug("balance", nb)
+      }
+    }
+  }
 
   const fetchPendingReceipts = async (txHashes: Hash[]) => {
     console.debug("fetchPendingReceipts", { txHashes })
@@ -80,25 +128,6 @@ export const Prompt = ({ className }: PromptProps) => {
       }
     }
   }
-
-  useEffect(() => {
-    if (publicClient) {
-      publicClient
-        .getContractEvents({
-          abi: suciphus.abi,
-          address: suciphusDeployment.address,
-        })
-        .then((logs) => {
-          console.debug({ logs })
-        })
-      publicClient.watchPendingTransactions({
-        onTransactions: async (txHashes) => {
-          // await fetchState()
-          await fetchPendingReceipts(txHashes)
-        },
-      })
-    }
-  }, [publicClient, pendingTxs])
 
   const fetchMessages = async () => {
     const nonce = await getUserNonce()
@@ -160,6 +189,11 @@ export const Prompt = ({ className }: PromptProps) => {
   }
 
   const doMintTokens = async () => {
+    if (publicClient) {
+      publicClient.getBlock({ blockTag: "latest" }).then((block) => {
+        console.log("block", block)
+      })
+    }
     if (suaveWallet) {
       const nonce = await getUserNonce()
       const txHash = await mintTokens({
@@ -171,12 +205,15 @@ export const Prompt = ({ className }: PromptProps) => {
     }
   }
 
-  return (
+  return (<>
+    <div className="text-xs header">
+      {balance && <>Balance: {formatEther(balance * ATTEMPTS_PER_ETH)} attempts</>}
+      <div style={{ marginLeft: 12 }}>
+        <button onClick={doMintTokens}>(Mint Tokens)</button>
+      </div>
+    </div>
     <div className={`w-full ${className}`}>
       <div className='text-sm'>
-        <div>
-          <button onClick={doMintTokens}>Mint Tokens</button>
-        </div>
         {/* {threadId && <div>Thread ID: {threadId}</div>} */}
         {pendingTxs.length > 0 && (
           // TODO: make this a floating notification
@@ -209,5 +246,5 @@ export const Prompt = ({ className }: PromptProps) => {
       </div>
 
     </div>
-  )
+  </>)
 }

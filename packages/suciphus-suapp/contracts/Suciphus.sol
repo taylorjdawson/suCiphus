@@ -10,6 +10,7 @@ import {Assistant} from "./Assistant.sol";
 import "forge-std/console.sol";
 import "openzeppelin-contracts/contracts/utils/math/Math.sol";
 import {WithUtils} from "./utils.sol";
+import {WETH9} from "./WETH9.sol";
 
 contract Suciphus is Suapp, WithUtils {
     using strings for *;
@@ -37,8 +38,9 @@ contract Suciphus is Suapp, WithUtils {
         "suciphus:openai_assistant_id";
     string private constant KEY_API_KEY = "api_key";
     string private constant KEY_ASSISTANT_ID = "assistant_id";
+    uint public constant ATTEMPTS_PER_ETH = 100;
 
-    address public WETH;
+    WETH9 public WETH;
 
     // Mapping of id(threadId) to the round number to enforce rejection of late submissions
     // This mapping is used to check if a submission is within the valid round timeframe when determining success.
@@ -75,7 +77,7 @@ contract Suciphus is Suapp, WithUtils {
 
     constructor(address weth) {
         owner = msg.sender;
-        WETH = weth;
+        WETH = WETH9(payable(weth));
     }
 
     // Define debugging events
@@ -213,6 +215,7 @@ contract Suciphus is Suapp, WithUtils {
         threadToRound[id(threadId)] = round;
         // map threadId to player
         threadToPlayer[id(threadId)] = player;
+        WETH.transferFrom(player, address(this), 1 ether / ATTEMPTS_PER_ETH);
     }
 
     function submitPrompt() public confidential returns (bytes memory) {
