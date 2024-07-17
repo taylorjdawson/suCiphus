@@ -16,17 +16,26 @@ contract Assistant {
         assistantId = _assistantId;
     }
 
-    function createThreadAndRun(
-        address player,
-        string calldata message
-    ) public returns (string memory runId, string memory threadId) {
-        Suave.HttpRequest memory request;
-        request.method = "POST";
-        request.url = "https://api.openai.com/v1/threads/runs";
+    function newOpenAIRequest(
+        string memory method,
+        string memory route
+    ) internal view returns (Suave.HttpRequest memory request) {
+        request.method = method;
+        request.url = string.concat("https://api.openai.com/v1/", route);
         request.headers = new string[](3);
         request.headers[0] = string.concat("Authorization: Bearer ", apiKey);
         request.headers[1] = "Content-Type: application/json";
         request.headers[2] = "OpenAI-Beta: assistants=v2";
+    }
+
+    function createThreadAndRun(
+        address player,
+        string calldata message
+    ) public returns (string memory runId, string memory threadId) {
+        Suave.HttpRequest memory request = newOpenAIRequest(
+            "POST",
+            "threads/runs"
+        );
         request.body = abi.encodePacked(
             '{"assistant_id": "',
             assistantId,
@@ -50,51 +59,35 @@ contract Assistant {
         string calldata _threadId,
         string calldata message
     ) public returns (string memory runId, string memory threadId) {
-        // if (bytes(threadId).length == 0) {
-        (runId, threadId) = createThreadAndRun(player, message);
-        // } else {
-        //     Suave.HttpRequest memory request;
-        //     request.method = "POST";
-        //     request.url = string.concat(
-        //         "https://api.openai.com/v1/threads/",
-        //         threadId,
-        //         "/messages"
-        //     );
-        //     request.headers = new string[](3);
-        //     request.headers[0] = string.concat(
-        //         "Authorization: Bearer ",
-        //         apiKey
-        //     );
-        //     request.headers[1] = "Content-Type: application/json";
-        //     request.headers[2] = "OpenAI-Beta: assistants=v2";
-        //     request.body = abi.encodePacked(
-        //         '{"role": "user", "content": "',
-        //         message,
-        //         '"}'
-        //     );
+        if (bytes(threadId).length == 0) {
+            (runId, threadId) = createThreadAndRun(player, message);
+        } else {
+            threadId = _threadId;
+            Suave.HttpRequest memory request = newOpenAIRequest(
+                "POST",
+                string.concat("threads/", threadId, "/messages")
+            );
+            request.body = abi.encodePacked(
+                '{"role": "user", "content": "',
+                message,
+                '"}'
+            );
 
-        //     bytes memory response = Suave.doHTTPRequest(request);
-        //     // @todo check response
-        //     string memory runId = createRun(player, threadId);
-        //     return (runId, threadId);
-        // }
+            bytes memory response = Suave.doHTTPRequest(request);
+            // @todo check response
+            string memory runId = createRun(player, threadId);
+            return (runId, threadId);
+        }
     }
 
     function createRun(
         address player,
         string memory threadId
     ) public returns (string memory) {
-        Suave.HttpRequest memory request;
-        request.method = "POST";
-        request.url = string.concat(
-            "https://api.openai.com/v1/threads/",
-            threadId,
-            "/runs"
+        Suave.HttpRequest memory request = newOpenAIRequest(
+            "POST",
+            string.concat("threads/", threadId, "/runs")
         );
-        request.headers = new string[](3);
-        request.headers[0] = string.concat("Authorization: Bearer ", apiKey);
-        request.headers[1] = "Content-Type: application/json";
-        request.headers[2] = "OpenAI-Beta: assistants=v2";
         request.body = abi.encodePacked(
             '{"assistant_id": "',
             assistantId,
@@ -113,32 +106,20 @@ contract Assistant {
         string memory runId,
         string memory limit
     ) public returns (string[] memory) {
-        Suave.HttpRequest memory request;
-        request.method = "GET";
-
         string memory queryParams = string.concat(
             bytes(limit).length > 0 || bytes(runId).length > 0 ? "?" : "",
             bytes(limit).length > 0 ? string.concat("limit=", limit) : "",
             bytes(limit).length > 0 && bytes(runId).length > 0 ? "&" : "",
             bytes(runId).length > 0 ? string.concat("runId=", runId) : ""
         );
-
-        request.url = string.concat(
-            "https://api.openai.com/v1/threads/",
-            threadId,
-            "/messages",
-            queryParams
+        Suave.HttpRequest memory request = newOpenAIRequest(
+            "GET",
+            string.concat("threads/", threadId, "/messages", queryParams)
         );
-
-        request.headers = new string[](3);
-        request.headers[0] = "Content-Type: application/json";
-        request.headers[1] = string.concat("Authorization: Bearer ", apiKey);
-        request.headers[2] = "OpenAI-Beta: assistants=v2";
 
         bytes memory response = Suave.doHTTPRequest(request);
         JSONParserLib.Item memory item = string(response).parse();
         JSONParserLib.Item[] memory messages = item.at('"data"').children();
-
         string[] memory results = new string[](messages.length);
 
         for (uint i = 0; i < messages.length; i++) {

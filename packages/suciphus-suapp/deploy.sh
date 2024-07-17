@@ -1,16 +1,20 @@
 #!/bin/bash
 
-# OPENAI_API_KEY should be present here:
+# required env vars should be present here:
 source ../../apps/admin/.env
 
-# check env
 checkEnv() {
-    if [ -z "$1" ]; then
-        echo "$2 is not set. Please set it in your environment before re-running the script."
+    local varName=$1
+    local varValue=${!varName}
+    if [ -z "$varValue" ]; then
+        echo "Environment variable $varName is not set or empty"
         exit 1
+    else
+        echo "$varName is set to $varValue"
     fi
 }
-checkEnv "$OPENAI_API_KEY" "OPENAI_API_KEY"
+checkEnv "OPENAI_API_KEY"
+checkEnv "OPENAI_ASSISTANT_ID"
 
 deploy() {
     # Run the build and deployment command, capture the output
@@ -69,4 +73,5 @@ echo "Address and ABI written to /src/suciphus.ts"
 
 # set API key by calling the contract with suave-geth spell
 echo "Uploading OpenAI API key to SUAVE..."
-suave-geth spell conf-request --confidential-input $OPENAI_API_KEY $suciphus_address "registerAPIKeyOffchain()"
+
+suave-geth spell conf-request --confidential-input $(cast abi-encode "f((string,string))" "($OPENAI_API_KEY, $OPENAI_ASSISTANT_ID)") $suciphus_address "registerAuthOffchain()"
