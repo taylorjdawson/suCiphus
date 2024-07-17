@@ -57,7 +57,7 @@ contract Assistant is WithUtils {
         string calldata _threadId,
         string calldata message
     ) public returns (string memory runId, string memory threadId) {
-        if (bytes(threadId).length == 0) {
+        if (bytes(_threadId).length == 0) {
             (runId, threadId) = createThreadAndRun(player, message);
         } else {
             threadId = _threadId;

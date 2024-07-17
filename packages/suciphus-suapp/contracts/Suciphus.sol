@@ -222,8 +222,7 @@ contract Suciphus is Suapp, WithUtils {
         return HOUSE_CUT_PERCENTAGE;
     }
 
-    // Takes the message sender and then checks to see the result
-    // of their prompt.
+    /// Returns true if submission returned an ethereum address.
     function checkSubmission(string memory threadId) public returns (bool) {
         // TODO: add onlyThreadOwner here and elsewhere
         // Ensure that this thread's submission is within the current round

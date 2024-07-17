@@ -66,7 +66,7 @@ export const submitPrompt = async (params: SubmitPromptParams) => {
   }
 
   const tx = await suaveWallet.signTransaction(suaveTx)
-  console.log(tx)
-  console.log("parsed signed tx", parseTransactionSuave(tx))
+  console.debug("signed tx", tx)
+  console.debug("parsed signed tx", parseTransactionSuave(tx))
   return await suaveWallet.sendRawTransaction({ serializedTransaction: tx })
 }

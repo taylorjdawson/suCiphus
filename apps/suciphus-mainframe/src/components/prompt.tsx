@@ -27,11 +27,11 @@ export const Prompt = ({ className }: PromptProps) => {
   const { suaveWallet, publicClient, account } = useWallet()
   const [inputValue, setInputValue] = useState("")
   const [prompts, setPrompts] = useState<string[]>([])
-  const [stateVal, setStateVal] = useState<number>()
   const [pendingTxs, setPendingTxs] = useState<Hash[]>([])
+  const [threadId, setThreadId] = useState<string>()
 
   const fetchPendingReceipts = async (txHashes: Hash[]) => {
-    console.log("fetchPendingReceipts", { txHashes })
+    console.debug("fetchPendingReceipts", { txHashes })
     if (publicClient) {
       for (const txHash of txHashes) {
         if (pendingTxs.includes(txHash)) {
@@ -47,7 +47,12 @@ export const Prompt = ({ className }: PromptProps) => {
               data: log.data,
               topics: log.topics,
             })
-            console.log("decoded log", decoded)
+            console.debug("decoded log", decoded)
+            if ("threadId" in decoded.args) {
+              const decodedThreadId = (decoded.args.threadId as string).replace(/"/g, "")
+              setThreadId(decodedThreadId)
+              console.log("threadId", decodedThreadId)
+            }
           }
           setPendingTxs((prev) => prev.filter((hash) => hash !== txHash))
         }
@@ -56,9 +61,6 @@ export const Prompt = ({ className }: PromptProps) => {
   }
 
   useEffect(() => {
-    if (stateVal === undefined) {
-      // fetchState()
-    }
     if (publicClient) {
       publicClient
         .getContractEvents({
@@ -66,7 +68,7 @@ export const Prompt = ({ className }: PromptProps) => {
           address: suciphusDeployment.address,
         })
         .then((logs) => {
-          console.log({ logs })
+          console.debug({ logs })
         })
       publicClient.watchPendingTransactions({
         onTransactions: async (txHashes) => {
@@ -109,14 +111,15 @@ export const Prompt = ({ className }: PromptProps) => {
         const nonce = await publicClient.getTransactionCount({
           address: account,
         })
+        console.log(`sending prompt with threadId ${threadId}`)
         const hash = await submitPrompt({
           prompt: inputValue,
-          threadId: "", // TODO: cache this in LocalStorage or smth
+          threadId: threadId || "", // TODO: cache this in LocalStorage or smth
           suaveWallet,
           nonce, // Pass the computed nonce
         })
 
-        console.log("tx hash", hash)
+        console.debug("tx hash", hash)
         setPendingTxs([...pendingTxs, hash])
       }
     }
@@ -124,9 +127,7 @@ export const Prompt = ({ className }: PromptProps) => {
 
   return (
     <div className={`w-full ${className}`}>
-      <div>
-        State: {stateVal === undefined ? <em>loading...</em> : stateVal}
-      </div>
+      {threadId && <div>Thread ID: {threadId}</div>}
       <div>
         {prompts.map((prompt, index) => (
           <div key={index}>{prompt}</div>
