@@ -38,6 +38,8 @@ contract Suciphus is Suapp, WithUtils {
     string private constant KEY_API_KEY = "api_key";
     string private constant KEY_ASSISTANT_ID = "assistant_id";
 
+    address public WETH;
+
     // Mapping of id(threadId) to the round number to enforce rejection of late submissions
     // This mapping is used to check if a submission is within the valid round timeframe when determining success.
     mapping(bytes32 => uint256) public threadToRound;
@@ -71,8 +73,9 @@ contract Suciphus is Suapp, WithUtils {
         _;
     }
 
-    constructor() {
+    constructor(address weth) {
         owner = msg.sender;
+        WETH = weth;
     }
 
     // Define debugging events
@@ -106,6 +109,10 @@ contract Suciphus is Suapp, WithUtils {
     struct AuthRegistration {
         string apiKey;
         string assistantId;
+    }
+
+    struct TokenDeposit {
+        uint256 amount;
     }
 
     uint64 public stateNum;
@@ -195,6 +202,8 @@ contract Suciphus is Suapp, WithUtils {
                 assistantIdRecordId
             );
     }
+
+    function depositTokens() public confidential {}
 
     function submitPromptCallback(
         string memory threadId,

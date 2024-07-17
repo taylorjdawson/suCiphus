@@ -18,10 +18,13 @@ checkEnv "OPENAI_ASSISTANT_ID"
 
 deploy() {
     # Run the build and deployment command, capture the output
-    output=$(suave-geth spell deploy ./$1 2>&1 | tee /dev/tty)
-
-    # Extract the deployed address from the output
-    deployed_address=$(echo "$output" | grep 'Contract deployed' | awk -F 'address=' '{print $2}')
+    if [ -z "$2" ]
+    then
+        output=$(suave-geth spell deploy ./$1 2>&1 | tee /dev/tty)
+        deployed_address=$(echo "$output" | grep 'Contract deployed' | awk -F 'address=' '{print $2}')
+    else
+        deployed_address=$(forge create --json --private-key 0x91ab9a7e53c220e6210460b65a7a3bb2ca181412a8a7b43ff336b3df1737ce12 ./contracts/$1 --constructor-args "$2" | jq -r .deployedTo)
+    fi
 
     # Check if the deployed_address is captured
     if [ -z "$deployed_address" ]
@@ -45,12 +48,13 @@ deploy() {
     fi
 }
 
-deploy "Suciphus.sol:Suciphus"
-suciphus_address=$deployed_address
-suciphus_abi=$abi
 deploy "WETH9.sol:WETH9"
 weth_address=$deployed_address
 weth_abi=$abi
+
+deploy "Suciphus.sol:Suciphus" $weth_address
+suciphus_address=$deployed_address
+suciphus_abi=$abi
 
 mkdir -p src
 cd src

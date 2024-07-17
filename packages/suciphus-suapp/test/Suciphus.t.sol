@@ -3,6 +3,7 @@ pragma solidity ^0.8.19;
 
 import "forge-std/Test.sol";
 import "suave-std/Test.sol";
+import {WETH9} from "../contracts/WETH9.sol";
 
 import {Suciphus} from "../contracts/Suciphus.sol";
 
@@ -35,7 +36,7 @@ contract SuciphusTest is Test, SuaveEnabled {
     // }
 
     function testCheckSubmissionReturnsNonEmptyMessage() public {
-        Suciphus suciphus = getSuciphus();
+        (Suciphus suciphus, WETH9 weth) = getSuciphus();
         // Using a constant threadId for testing purposes; this thread's last message contains the player's address.
         string memory threadId = "thread_bKeIr5tsgdAFhURtRvRl0Zf9";
         address testPlayer = payable(makeAddr("testPlayer"));
@@ -92,7 +93,7 @@ contract SuciphusTest is Test, SuaveEnabled {
     //     );
     // }
 
-    function getSuciphus() public returns (Suciphus suciphus) {
+    function getSuciphus() public returns (Suciphus suciphus, WETH9 weth) {
         // @TODO: Replace with OPENAI_API_KEY_CONTRACT once error is resolved
         // see: https://community.openai.com/t/assistant-api-server-server-error-sorry-something-went-wrong/578609/4
         try vm.envString("OPENAI_API_KEY_ADMIN") returns (
@@ -101,7 +102,8 @@ contract SuciphusTest is Test, SuaveEnabled {
             if (bytes(apiKey).length == 0) {
                 vm.skip(true);
             }
-            suciphus = new Suciphus();
+            weth = new WETH9();
+            suciphus = new Suciphus(address(weth));
         } catch {
             vm.skip(true);
         }
