@@ -21,17 +21,17 @@ const KETTLE_ADDRESS = "0x03493869959C866713C33669cA118E774A30A0E5"
 */
 
 type SubmitPromptParams = {
-  prompt: string
+  prompt?: string
   value?: bigint
   suaveWallet: SuaveWallet<Transport>
   threadId: string
-  nonce: number
+  nonce?: number
 }
 
 type MintTokensParams = {
   value: bigint
   suaveWallet: SuaveWallet<Transport>
-  nonce: number
+  nonce?: number
 }
 
 const encodePrompt = (prompt: string, threadId: string) => {
@@ -82,6 +82,9 @@ const suciphusConfRequest = ({args, confidentialInputs, functionName, nonce}: {f
 export const submitPrompt = async (params: SubmitPromptParams) => {
   const { prompt, threadId, suaveWallet, nonce } = params
 
+  if (!prompt) {
+    throw new Error("non-empty prompt is required")
+  }
   const tx = suciphusConfRequest({
     functionName: "submitPrompt",
     confidentialInputs: encodePrompt(prompt, threadId),
@@ -116,4 +119,15 @@ export const mintTokens = async (params: MintTokensParams) => {
     gas: 150n * 1000n,
   }
   return await suaveWallet.sendTransaction(tx)
+}
+
+export const checkSubmission = async (params: SubmitPromptParams) => {
+  const { threadId, suaveWallet, nonce } = params
+  return await suaveWallet.sendTransaction({
+    ...suciphusConfRequest({
+      functionName: "checkSubmission",
+      confidentialInputs: encodePrompt("", threadId),
+      nonce,
+    }),
+  })
 }

@@ -76,6 +76,7 @@
   }
 
   .header {
+    padding: 8px;
     display: flex;
     position: absolute;
     top: 0;

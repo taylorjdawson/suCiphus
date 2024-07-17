@@ -47,14 +47,17 @@ contract SuciphusTest is Test, SuaveEnabled {
 
         uint256 playerBalanceBefore = testPlayer.balance;
 
-        vm.prank(testPlayer);
-        bool success = suciphus.checkSubmission(threadId);
+        vm.startPrank(testPlayer);
+        ctx.setConfidentialInputs(
+            abi.encode(Suciphus.Prompt({prompt: "", threadId: threadId}))
+        );
+        suciphus.checkSubmission();
         vm.stopPrank();
 
         uint256 playerBalanceAfter = testPlayer.balance;
         uint256 expectedBalanceAfter = playerBalanceBefore + 9 ether;
 
-        assertTrue(success, "Submission should be successful.");
+        // assertTrue(success, "Submission should be successful.");
         assertEq(
             playerBalanceAfter,
             expectedBalanceAfter,

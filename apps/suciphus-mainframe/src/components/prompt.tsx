@@ -19,7 +19,7 @@ import suciphus from "@repo/suciphus-suapp/out/Suciphus.sol/Suciphus.json"
 import weth from "@repo/suciphus-suapp/out/WETH9.sol/WETH9.json"
 import { suciphus as suciphusDeployment, weth as wethDeployment } from "@repo/suciphus-suapp/src/suciphus"
 
-import { mintTokens, readMessages, submitPrompt } from "@/lib/suciphus"
+import { checkSubmission, mintTokens, readMessages, submitPrompt } from "@/lib/suciphus"
 
 import { Input } from "./ui/input"
 import { useWallet } from "./wallet-provider"
@@ -150,11 +150,11 @@ export const Prompt = ({ className }: PromptProps) => {
     if (!publicClient) {
       throw new Error("publicClient not initialized")
     }
-    if (!account) {
-      throw new Error("account not initialized")
+    if (!suaveWallet?.account.address) {
+      throw new Error("wallet not initialized")
     }
     return await publicClient.getTransactionCount({
-      address: account,
+      address: suaveWallet?.account.address,
     })
   }
 
@@ -189,11 +189,6 @@ export const Prompt = ({ className }: PromptProps) => {
   }
 
   const doMintTokens = async () => {
-    if (publicClient) {
-      publicClient.getBlock({ blockTag: "latest" }).then((block) => {
-        console.log("block", block)
-      })
-    }
     if (suaveWallet) {
       const nonce = await getUserNonce()
       const txHash = await mintTokens({
@@ -202,6 +197,20 @@ export const Prompt = ({ className }: PromptProps) => {
         nonce,
       })
       setPendingTxs([...pendingTxs, txHash])
+    }
+  }
+
+  const doCheckSubmission = async () => {
+    if (suaveWallet && threadId) {
+      const nonce = await getUserNonce()
+      const txHash = await checkSubmission({
+        threadId: threadId,
+        suaveWallet,
+        nonce,
+      })
+      setPendingTxs([...pendingTxs, txHash])
+    } else {
+      throw new Error("undefined element(s) must be defined" + JSON.stringify({ threadId, suaveWallet }))
     }
   }
 
@@ -238,13 +247,15 @@ export const Prompt = ({ className }: PromptProps) => {
               onKeyDown={handleKeyPress}
             />
           </div>
+          <div>
+            <button onClick={doCheckSubmission}>Check Submission</button>
+          </div>
           {!messages.includes(prompts[prompts.length - 1]) && pendingTxs.length === 0 && threadId && <button onClick={fetchMessages}>Fetch New Responses</button >}
         </div>
         <div className={`col-span-2`} style={{ padding: 16, marginLeft: 16 }}>
           {messages.toReversed().map((msg, idx) => <div key={`key_${idx}`}>{isUserPrompt(msg) ? "> " : ""}{msg}</div>)}
         </div>
       </div>
-
     </div>
   </>)
 }

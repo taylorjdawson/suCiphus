@@ -211,11 +211,11 @@ contract Suciphus is Suapp, WithUtils {
         string memory threadId,
         address player
     ) public emitOffchainLogs {
+        WETH.transferFrom(player, address(this), 1 ether / ATTEMPTS_PER_ETH);
         // Update the round for the threadId
         threadToRound[id(threadId)] = round;
         // map threadId to player
         threadToPlayer[id(threadId)] = player;
-        WETH.transferFrom(player, address(this), 1 ether / ATTEMPTS_PER_ETH);
     }
 
     function submitPrompt() public confidential returns (bytes memory) {
@@ -254,9 +254,28 @@ contract Suciphus is Suapp, WithUtils {
         return abi.encodeWithSelector(this.onReadMessages.selector);
     }
 
+    function onCheckSubmission(
+        bool containsPlayerAddress,
+        address player
+    ) public emitOffchainLogs {
+        if (containsPlayerAddress) {
+            uint256 balance = WETH.balanceOf(address(this));
+            uint256 houseCut = Math.mulDiv(balance, HOUSE_CUT_PERCENTAGE, 100);
+            uint256 amountToSend = balance - houseCut;
+
+            emit SuccessfulSubmission(msg.sender, amountToSend, round, season);
+            WETH.transfer(player, amountToSend);
+            // the round is autoclosed on succesful submission
+            nextRound();
+        } else {
+            emit NothingHappened();
+        }
+    }
+
     /// Returns true if submission returned an ethereum address.
-    /// TODO: move argument to conf store
-    function checkSubmission(string memory threadId) public returns (bool) {
+    function checkSubmission() public returns (bytes memory) {
+        bytes memory confInputs = Context.confidentialInputs();
+        string memory threadId = abi.decode(confInputs, (Prompt)).threadId;
         // TODO: add onlyThreadOwner here and elsewhere
         // Ensure that this thread's submission is within the current round
         require(threadToRound[id(threadId)] == round, "The round has ended");
@@ -264,30 +283,21 @@ contract Suciphus is Suapp, WithUtils {
         Assistant assistant = getAssistant();
 
         string memory lastMessage = assistant.getLastMessage(threadId);
-
         string memory lowerLastMessage = toLower(lastMessage);
-
         strings.slice memory lastMessageSlice = lowerLastMessage.toSlice();
         bool containsPlayerAddress = lastMessageSlice.contains(
             addressToString(msg.sender).toSlice()
         );
 
-        if (containsPlayerAddress) {
-            uint256 balance = address(this).balance;
-            uint256 houseCut = Math.mulDiv(balance, HOUSE_CUT_PERCENTAGE, 100);
-            uint256 amountToSend = balance - houseCut;
-
-            payable(msg.sender).transfer(amountToSend);
-            emit SuccessfulSubmission(msg.sender, amountToSend, round, season);
-            // @todo we want to advance to the next round before returning here
-            // this is to prevent race conditions
-            // the round is autoclosed on succesful submission
-            nextRound();
-        }
-
         // @todo consider the event where the prompt is succesful but the contract reverts
 
-        return containsPlayerAddress;
+        // return containsPlayerAddress;
+        return
+            abi.encodeWithSelector(
+                this.onCheckSubmission.selector,
+                containsPlayerAddress,
+                msg.sender
+            );
     }
 
     /// @notice Retrieves the current round number
