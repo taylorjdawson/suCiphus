@@ -3,9 +3,10 @@ pragma solidity ^0.8.19;
 
 import "suave-std/suavelib/Suave.sol";
 import "solady/src/utils/JSONParserLib.sol";
+import {WithUtils} from "./utils.sol";
 
 /** Transient contract. Should only be deployed inside a confidential offchain request. */
-contract Assistant {
+contract Assistant is WithUtils {
     using JSONParserLib for *;
 
     string public apiKey;
@@ -48,9 +49,6 @@ contract Assistant {
         JSONParserLib.Item memory item = string(response).parse();
         runId = item.at('"id"').value();
         threadId = item.at('"thread_id"').value();
-        // threadRecordId = setThreadPlayerRecord(threadId, player); // TODO: come back to this later
-        // (need a way to map threadId to player;
-        // maybe this responsibility should be lifted up to the Suciphus contract)
         saveThread(player, threadId);
     }
 
@@ -145,7 +143,6 @@ contract Assistant {
         address player,
         string memory threadId
     ) public returns (string memory) {
-        require(msg.sender == player, "Only the player can call this function");
         return getMessages(player, threadId, "", "1")[0];
     }
 
@@ -158,28 +155,12 @@ contract Assistant {
         request.headers[0] = "Content-Type: application/json";
         request.body = abi.encodePacked(
             '{"player":"',
-            toString(player),
+            addressToString(player),
             '","thread_id":',
             threadId,
             "}"
         );
 
         Suave.doHTTPRequest(request);
-    }
-
-    function toString(address _addr) internal pure returns (string memory) {
-        bytes32 value = bytes32(uint256(uint160(_addr)));
-        bytes memory alphabet = "0123456789abcdef";
-
-        bytes memory str = new bytes(42);
-        str[0] = "0";
-        str[1] = "x";
-
-        for (uint256 i = 0; i < 20; i++) {
-            str[2 + i * 2] = alphabet[uint8(value[i + 12] >> 4)];
-            str[3 + i * 2] = alphabet[uint8(value[i + 12] & 0x0f)];
-        }
-
-        return string(str);
     }
 }

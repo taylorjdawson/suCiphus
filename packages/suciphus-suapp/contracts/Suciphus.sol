@@ -118,7 +118,6 @@ contract Suciphus is Suapp, WithUtils {
             apiKeyRecord,
             KEY_API_KEY
         );
-
         return string(apiKey);
     }
 
@@ -128,15 +127,12 @@ contract Suciphus is Suapp, WithUtils {
             assistantIdRecord,
             KEY_ASSISTANT_ID
         );
-
         return string(assistantId);
     }
 
     function getAssistant() public returns (Assistant assistant) {
         string memory apiKey = getApiKey();
-        // string memory assistantId = "asst_8EN1Avo8QkET8LDwKjLeitky";
         string memory assistantId = getAssistantId();
-        // TODO: get the assistant id from confStore as well
         assistant = new Assistant(apiKey, assistantId);
     }
 
@@ -196,8 +192,8 @@ contract Suciphus is Suapp, WithUtils {
     ) public emitOffchainLogs {
         // Update the round for the threadId
         threadToRound[id(threadId)] = round;
+        // map threadId to player
         threadToPlayer[id(threadId)] = player;
-        // @todo potentially store the threadId in the contract by player address
     }
 
     function submitPrompt() public returns (bytes memory) {
@@ -206,12 +202,10 @@ contract Suciphus is Suapp, WithUtils {
         Prompt memory prompt = abi.decode(confPrompt, (Prompt));
 
         Assistant assistant = getAssistant();
-
         (string memory runId, string memory threadId) = assistant
             .createMessageAndRun(msg.sender, prompt.threadId, prompt.prompt);
 
         emit PromptSubmitted(msg.sender, threadId, runId, round, season);
-
         return
             abi.encodeWithSelector(
                 this.submitPromptCallback.selector,
