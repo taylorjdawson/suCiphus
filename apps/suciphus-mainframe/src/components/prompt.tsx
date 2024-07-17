@@ -144,21 +144,16 @@ export const Prompt = ({ className }: PromptProps) => {
     }
   }
 
+  const isUserPrompt = (msg: string) => {
+    return prompts.includes(msg)
+  }
+
   return (
-    <div className={`w-full grid grid-cols-2 ${className}`}>
-      <div className={`col-auto`}>
-        {threadId && <div>Thread ID: {threadId}</div>}
-        <div>
-          <Input
-            placeholder="Enter your prompt"
-            disabled={!suaveWallet}
-            value={inputValue}
-            onChange={handleInputChange}
-            onKeyDown={handleKeyPress}
-          />
-        </div>
-        {prompts.length !== messages.length / 2 && pendingTxs.length === 0 && threadId && <button onClick={fetchMessages}>Fetch New Responses</button >}
+    <div className={`w-full ${className}`}>
+      <div className='text-sm'>
+        {/* {threadId && <div>Thread ID: {threadId}</div>} */}
         {pendingTxs.length > 0 && (
+          // TODO: make this a floating notification
           <div>
             <p>Pending</p>
             <ul>
@@ -168,12 +163,25 @@ export const Prompt = ({ className }: PromptProps) => {
             </ul>
           </div>
         )}
+      </div>
+      <div className="grid grid-cols-3">
+        <div className={`col-span-1`}>
+          <div>
+            <Input
+              placeholder="Enter your prompt"
+              disabled={!suaveWallet}
+              value={inputValue}
+              onChange={handleInputChange}
+              onKeyDown={handleKeyPress}
+            />
+          </div>
+          {!messages.includes(prompts[prompts.length - 1]) && pendingTxs.length === 0 && threadId && <button onClick={fetchMessages}>Fetch New Responses</button >}
+        </div>
+        <div className={`col-span-2`} style={{ padding: 16, marginLeft: 16 }}>
+          {messages.toReversed().map((msg, idx) => <div key={`key_${idx}`}>{isUserPrompt(msg) ? "> " : ""}{msg}</div>)}
+        </div>
+      </div>
 
-      </div>
-      <div className={`col-auto`} style={{ padding: 16, marginLeft: 16 }}>
-        {messages.toReversed().map((msg, idx) => <div key={`key_${idx}`}>{idx % 2 === 0 ? "> " : ""}{msg}</div>)}
-        {prompts.length !== messages.length / 2 && <div>{"> "}{prompts[prompts.length - 1]}</div>}
-      </div>
     </div>
   )
 }
