@@ -66,7 +66,7 @@ const defaultRequest = {
   to: suciphusDeployment.address,
 }
 
-const suciphusRequest = ({args, confidentialInputs, functionName, nonce, value}: {functionName: string, confidentialInputs?: Hex, args?: any[], nonce?: number, value?: bigint}) => {
+const suciphusConfRequest = ({args, confidentialInputs, functionName, nonce}: {functionName: string, confidentialInputs?: Hex, args?: any[], nonce?: number}) => {
   return {
     ...defaultRequest,
     data: encodeFunctionData({
@@ -82,21 +82,18 @@ const suciphusRequest = ({args, confidentialInputs, functionName, nonce, value}:
 export const submitPrompt = async (params: SubmitPromptParams) => {
   const { prompt, threadId, suaveWallet, nonce } = params
 
-  const suaveTx = suciphusRequest({
+  const tx = suciphusConfRequest({
     functionName: "submitPrompt",
     confidentialInputs: encodePrompt(prompt, threadId),
     nonce,
   })
 
-  const tx = await suaveWallet.signTransaction(suaveTx)
-  console.debug("signed tx", tx)
-  console.debug("parsed signed tx", parseTransactionSuave(tx))
-  return await suaveWallet.sendRawTransaction({ serializedTransaction: tx })
+  return await suaveWallet.sendTransaction(tx)
 }
 
 export const readMessages = async (params: SubmitPromptParams) => {
   const { threadId, suaveWallet, nonce } = params
-  const tx = suciphusRequest({
+  const tx = suciphusConfRequest({
     functionName: "readMessages",
     confidentialInputs: encodePrompt("", threadId),
     nonce,
@@ -116,8 +113,7 @@ export const mintTokens = async (params: MintTokensParams) => {
     value,
     type: "0x0",
     to: wethDeployment.address,
-    gas: 100n * 1000n,
+    gas: 50n * 1000n,
   }
-  const signed = await suaveWallet.signTransaction(tx)
-  return await suaveWallet.sendRawTransaction({serializedTransaction: signed})
+  return await suaveWallet.sendTransaction(tx)
 }

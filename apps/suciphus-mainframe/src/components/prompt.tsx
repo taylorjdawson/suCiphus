@@ -14,12 +14,14 @@ import {
   parseEther,
 } from "@flashbots/suave-viem"
 import suciphus from "@repo/suciphus-suapp/out/Suciphus.sol/Suciphus.json"
-import { suciphus as suciphusDeployment } from "@repo/suciphus-suapp/src/suciphus"
+import weth from "@repo/suciphus-suapp/out/WETH9.sol/WETH9.json"
+import { suciphus as suciphusDeployment, weth as wethDeployment } from "@repo/suciphus-suapp/src/suciphus"
 
 import { mintTokens, readMessages, submitPrompt } from "@/lib/suciphus"
 
 import { Input } from "./ui/input"
 import { useWallet } from "./wallet-provider"
+import { removeQuotes } from '@/lib/utils'
 
 export interface PromptProps {
   className?: string
@@ -45,22 +47,31 @@ export const Prompt = ({ className }: PromptProps) => {
           console.log({ receipt })
           // check receipt for logs of event `LogBytes(string label, bytes value)`
           for (const log of receipt.logs) {
-            const decoded = decodeEventLog({
-              abi: suciphus.abi,
-              data: log.data,
-              topics: log.topics,
-            })
-            console.debug("decoded log", decoded)
-            if (decoded.args) {
-              if (decoded.eventName === "PromptSubmitted" && "threadId" in decoded.args) {
-                const decodedThreadId = (decoded.args.threadId as string).replace(/"/g, "")
-                setThreadId(decodedThreadId)
-                console.log("threadId", decodedThreadId)
+            for (const targetABI of [suciphus.abi, weth.abi]) {
+              let decoded
+              try {
+                decoded = decodeEventLog({
+                  abi: targetABI,
+                  data: log.data,
+                  topics: log.topics,
+                })
+              } catch (e) {
+                console.debug("failed to decode log (this is normal)", e)
+                continue
               }
-              else if (decoded.eventName === "LogStrings" && "values" in decoded.args) {
-                console.log("decoded messages", decoded.args.values)
-                const decodedMessages = (decoded.args.values as string[]).map((str: string) => str.replace(/"/g, ""))
-                setMessages(decodedMessages)
+
+              console.debug("decoded log", decoded)
+              if (decoded.args) {
+                if (decoded.eventName === "PromptSubmitted" && "threadId" in decoded.args) {
+                  const decodedThreadId = removeQuotes(decoded.args.threadId as string)
+                  setThreadId(decodedThreadId)
+                  console.log("threadId", decodedThreadId)
+                }
+                else if (decoded.eventName === "LogStrings" && "values" in decoded.args) {
+                  console.log("decoded messages", decoded.args.values)
+                  const decodedMessages = (decoded.args.values as string[]).map(removeQuotes)
+                  setMessages(decodedMessages)
+                }
               }
             }
           }

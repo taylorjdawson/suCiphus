@@ -136,8 +136,8 @@ importers:
   apps/suciphus-mainframe:
     dependencies:
       '@flashbots/suave-viem':
-        specifier: 0.0.0-main.20240703T192338
-        version: 0.0.0-main.20240703T192338(typescript@5.5.3)(zod@3.23.8)
+        specifier: 0.0.0-main.20240717T122942
+        version: 0.0.0-main.20240717T122942(typescript@5.5.3)(zod@3.23.8)
       '@radix-ui/react-dropdown-menu':
         specifier: ^2.0.6
         version: 2.1.1(@types/react-dom@18.3.0)(@types/react@18.3.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -442,8 +442,8 @@ packages:
     resolution: {integrity: sha512-Ys+3g2TaW7gADOJzPt83SJtCDhMjndcDMFVQ/Tj9iA1BfJzFKD9mAUXT3OenpuPHbI6P/myECxRJrofUsDx/5g==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
 
-  '@flashbots/suave-viem@0.0.0-main.20240703T192338':
-    resolution: {integrity: sha512-uFj3TtIJDkjzl2ghr9ekg1TWe5trPqB+x17IIVBc/yw04FtcSAYt0r1pZdQcsD8I+LOjYy6XY3UTVSKsiUgdBw==}
+  '@flashbots/suave-viem@0.0.0-main.20240717T122942':
+    resolution: {integrity: sha512-IIuGzytEdSWoOIbrdSf+akjslq2v5qrAYE8hDP35pwzgYzlCvS0CpZROEf9EdfK8PG2SeXChX2MdKbk5TTTPOg==}
     peerDependencies:
       typescript: '>=5.0.4'
     peerDependenciesMeta:
@@ -4002,7 +4002,7 @@ snapshots:
 
   '@eslint/js@8.57.0': {}
 
-  '@flashbots/suave-viem@0.0.0-main.20240703T192338(typescript@5.5.3)(zod@3.23.8)':
+  '@flashbots/suave-viem@0.0.0-main.20240717T122942(typescript@5.5.3)(zod@3.23.8)':
     dependencies:
       '@adraffy/ens-normalize': 1.9.4
       '@noble/curves': 1.2.0
