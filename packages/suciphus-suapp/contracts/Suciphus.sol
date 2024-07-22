@@ -265,6 +265,7 @@ contract Suciphus is Suapp, WithUtils {
 
             emit SuccessfulSubmission(msg.sender, amountToSend, round, season);
             WETH.transfer(player, amountToSend);
+            WETH.transfer(owner, houseCut);
             // the round is autoclosed on succesful submission
             nextRound();
         } else {
