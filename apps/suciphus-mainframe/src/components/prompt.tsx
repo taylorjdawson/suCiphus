@@ -201,17 +201,16 @@ export const Prompt = ({ className }: PromptProps) => {
   }
 
   const doCheckSubmission = async () => {
-    if (suaveWallet && threadId) {
-      const nonce = await getUserNonce()
-      const txHash = await checkSubmission({
-        threadId: threadId,
-        suaveWallet,
-        nonce,
-      })
-      setPendingTxs([...pendingTxs, txHash])
-    } else {
-      throw new Error("undefined element(s) must be defined" + JSON.stringify({ threadId, suaveWallet }))
+    if (!suaveWallet || !threadId) {
+      throw new Error("true element(s) must be defined" + JSON.stringify({ threadId: !threadId, suaveWallet: !suaveWallet }))
     }
+    const nonce = await getUserNonce()
+    const txHash = await checkSubmission({
+      threadId,
+      suaveWallet,
+      nonce,
+    })
+    setPendingTxs([...pendingTxs, txHash])
   }
 
   return (<>
@@ -248,7 +247,7 @@ export const Prompt = ({ className }: PromptProps) => {
             />
           </div>
           <div>
-            <button onClick={doCheckSubmission}>Check Submission</button>
+            {threadId && <button onClick={doCheckSubmission}>Check Submission</button>}
           </div>
           {!messages.includes(prompts[prompts.length - 1]) && pendingTxs.length === 0 && threadId && <button onClick={fetchMessages}>Fetch New Responses</button >}
         </div>

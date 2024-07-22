@@ -61,7 +61,7 @@ const encodePrompt = (prompt: string, threadId: string) => {
 
 const defaultRequest = {
   kettleAddress: KETTLE_ADDRESS,
-  gas: 30n * 1000n * 1000n,
+  gas: 3n * 1000n * 1000n,
   type: "0x43",
   to: suciphusDeployment.address,
 }
