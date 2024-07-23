@@ -5,8 +5,6 @@ import {
   type Hex,
 } from "@flashbots/suave-viem"
 import {
-  parseTransactionSuave,
-  SuaveProvider,
   SuaveWallet,
   type TransactionRequestSuave,
 } from "@flashbots/suave-viem/chains/utils"

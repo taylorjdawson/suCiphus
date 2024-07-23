@@ -222,7 +222,6 @@ export const Prompt = ({ className }: PromptProps) => {
     </div>
     <div className={`w-full ${className}`}>
       <div className='text-sm'>
-        {/* {threadId && <div>Thread ID: {threadId}</div>} */}
         {pendingTxs.length > 0 && (
           // TODO: make this a floating notification
           <div>

@@ -8,8 +8,6 @@ import {WETH9} from "../contracts/WETH9.sol";
 import {Suciphus} from "../contracts/Suciphus.sol";
 
 contract SuciphusTest is Test, SuaveEnabled {
-    // Suciphus suciphus;
-
     // function testChatFunctionReturnsTrue() public {
     //     Suciphus suciphus = getSuciphus();
     //     address testPlayer = makeAddr("testPlayer");
