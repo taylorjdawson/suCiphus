@@ -34,7 +34,7 @@ contract SuciphusTest is Test, SuaveEnabled {
     // }
 
     function testCheckSubmissionReturnsNonEmptyMessage() public {
-        (Suciphus suciphus, WETH9 weth) = getSuciphus();
+        (Suciphus suciphus, ) = getSuciphus();
         // Using a constant threadId for testing purposes; this thread's last message contains the player's address.
         string memory threadId = "thread_bKeIr5tsgdAFhURtRvRl0Zf9";
         address testPlayer = payable(makeAddr("testPlayer"));

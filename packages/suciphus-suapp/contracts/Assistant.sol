@@ -73,15 +73,11 @@ contract Assistant is WithUtils {
 
             bytes memory response = Suave.doHTTPRequest(request);
             // @todo check response
-            string memory runId = createRun(player, threadId);
-            return (runId, threadId);
+            runId = createRun(threadId);
         }
     }
 
-    function createRun(
-        address player,
-        string memory threadId
-    ) public returns (string memory) {
+    function createRun(string memory threadId) public returns (string memory) {
         Suave.HttpRequest memory request = newOpenAIRequest(
             "POST",
             string.concat("threads/", threadId, "/runs")

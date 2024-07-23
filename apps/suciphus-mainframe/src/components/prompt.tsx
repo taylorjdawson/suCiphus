@@ -24,6 +24,7 @@ import { checkSubmission, mintTokens, readMessages, submitPrompt } from "@/lib/s
 import { Input } from "./ui/input"
 import { useWallet } from "./wallet-provider"
 import { removeQuotes } from '@/lib/utils'
+import { env } from '@/env.mjs'
 
 const ATTEMPTS_PER_ETH = 100n
 
@@ -37,7 +38,7 @@ export const Prompt = ({ className }: PromptProps) => {
   const [prompts, setPrompts] = useState<string[]>([])
   const [messages, setMessages] = useState<string[]>([])
   const [pendingTxs, setPendingTxs] = useState<Hash[]>([])
-  const [threadId, setThreadId] = useState<string>()
+  const [threadId, setThreadId] = useState<string>(env.NEXT_PUBLIC_THREAD_ID)
   const [balance, setBalance] = useState<bigint>()
 
   useEffect(() => {

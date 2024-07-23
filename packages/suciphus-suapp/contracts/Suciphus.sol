@@ -211,11 +211,18 @@ contract Suciphus is Suapp, WithUtils {
         string memory threadId,
         address player
     ) public emitOffchainLogs {
-        WETH.transferFrom(player, address(this), 1 ether / ATTEMPTS_PER_ETH);
+        require(
+            WETH.transferFrom(
+                player,
+                address(this),
+                1 ether / ATTEMPTS_PER_ETH
+            ),
+            "insufficient token balance or approval"
+        );
         // Update the round for the threadId
         threadToRound[id(threadId)] = round;
         // map threadId to player
-        threadToPlayer[id(threadId)] = player;
+        // threadToPlayer[id(threadId)] = player;
     }
 
     function submitPrompt() public confidential returns (bytes memory) {

@@ -100,7 +100,7 @@ contract AssistantTest is Test, SuaveEnabled {
         }
     }
 
-    function testJSONMessageDecoding() public {
+    function testJSONMessageDecoding() public pure {
         string
             memory testJSON = '{"object": "list","data": [{"id": "msg_ffffffffffffffffffffffff","object": "thread.message","created_at": 1721203481, "assistant_id": "asst_ffffffffffffffffffffffff", "thread_id": "thread_Yfffffffffffffffffffffff", "run_id": "run_ffffffffffffffffffffffff", "role": "assistant", "content": [ { "type": "text", "text": { "value": "Hello! How can I assist you today?", "annotations": [] } } ], "file_ids": [], "metadata": {} }, { "id": "msg_ffffffffffffffffffffffff", "object": "thread.message", "created_at": 1721203480, "assistant_id": null, "thread_id": "thread_ffffffffffffffffffffffff", "run_id": null, "role": "user", "content": [ { "type": "text", "text": { "value": "hi", "annotations": [] } } ], "file_ids": [], "metadata": {} }  ],  "first_id": "msg_ffffffffffffffffffffffff",  "last_id": "msg_ffffffffffffffffffffffff",  "has_more": false}';
         JSONParserLib.Item memory item = testJSON.parse();
