@@ -49,6 +49,9 @@ contract Suciphus is Suapp, WithUtils {
     // mapping of id(threadId) to the player address, to verify that the player is the one who submitted the original prompt
     mapping(bytes32 => address) public threadToPlayer;
 
+    // Mapping from player address to list of thread IDs
+    mapping(address => string[]) private playerToThreads;
+
     address private owner;
 
     modifier onlyOwner() {
@@ -211,11 +214,19 @@ contract Suciphus is Suapp, WithUtils {
         string memory threadId,
         address player
     ) public emitOffchainLogs {
-        WETH.transferFrom(player, address(this), 1 ether / ATTEMPTS_PER_ETH);
+        uint256 requiredAmount = 0.01 ether;
+        require(
+            WETH.balanceOf(player) >= requiredAmount,
+            "Insufficient balance to submit prompt"
+        );
+
+        WETH.transferFrom(player, address(this), requiredAmount);
         // Update the round for the threadId
         threadToRound[id(threadId)] = round;
-        // map threadId to player
+        // Map threadId to player
         threadToPlayer[id(threadId)] = player;
+        // Add threadId to the list of threads for the player
+        playerToThreads[player].push(threadId);
     }
 
     function submitPrompt() public confidential returns (bytes memory) {
@@ -313,5 +324,11 @@ contract Suciphus is Suapp, WithUtils {
         round++;
         // Clear the thread to round mapping to free up storage
         // delete threadToRound;
+    }
+
+    function getThreadIdsByPlayer(
+        address player
+    ) public view returns (string[] memory) {
+        return playerToThreads[player];
     }
 }

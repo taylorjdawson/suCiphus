@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # required env vars should be present here:
-source ../../apps/admin/.env
+source ../../.env
 
 checkEnv() {
     local varName=$1
@@ -50,7 +50,7 @@ deploy() {
 
 deploy "WETH9.sol:WETH9"
 weth_address=$deployed_address
-weth_abi=$abi
+weth_abi=$(jq '.abi' ./out/WETH9.sol/WETH9.json)
 
 deploy "Suciphus.sol:Suciphus" $weth_address
 suciphus_address=$deployed_address

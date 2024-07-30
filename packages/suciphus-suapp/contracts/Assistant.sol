@@ -120,12 +120,20 @@ contract Assistant is WithUtils {
         string[] memory results = new string[](messages.length);
 
         for (uint i = 0; i < messages.length; i++) {
-            results[i] = messages[i]
+            string memory role = messages[i].at('"role"').value();
+            string memory message = messages[i]
                 .at('"content"')
                 .at(0)
                 .at('"text"')
                 .at('"value"')
                 .value();
+            results[i] = string.concat(
+                '{"role": ',
+                role,
+                ', "message": ',
+                message,
+                "}"
+            );
         }
 
         return results;

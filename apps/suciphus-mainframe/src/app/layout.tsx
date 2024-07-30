@@ -5,8 +5,8 @@ import { Inter } from "next/font/google"
 
 import { siteConfig } from "@/config/site"
 import { cn } from "@/lib/utils"
+import { Providers } from "@/components/providers"
 import { ThemeProvider } from "@/components/theme-provider"
-import { WalletProvider } from "@/components/wallet-provider"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -80,7 +80,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
           enableSystem
           disableTransitionOnChange
         >
-          <WalletProvider>{children}</WalletProvider>
+          <Providers>{children}</Providers>
         </ThemeProvider>
       </body>
     </html>

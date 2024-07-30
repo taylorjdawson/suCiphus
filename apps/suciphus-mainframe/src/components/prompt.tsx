@@ -17,13 +17,34 @@ import {
 } from "@flashbots/suave-viem"
 import suciphus from "@repo/suciphus-suapp/out/Suciphus.sol/Suciphus.json"
 import weth from "@repo/suciphus-suapp/out/WETH9.sol/WETH9.json"
-import { suciphus as suciphusDeployment, weth as wethDeployment } from "@repo/suciphus-suapp/src/suciphus"
+import {
+  suciphus as suciphusDeployment,
+  weth as wethDeployment,
+} from "@repo/suciphus-suapp/src/suciphus"
+import { useAccount } from "wagmi"
 
-import { checkSubmission, mintTokens, readMessages, submitPrompt } from "@/lib/suciphus"
+import {
+  checkSubmission,
+  mintTokens,
+  readMessages,
+  submitPrompt,
+} from "@/lib/suciphus"
+import { removeQuotes } from "@/lib/utils"
 
+import AddCredits from "./add-credits"
+import AddCreditsDialog from "./add-credits-dialog"
+import { useSuaveWallet } from "./suave-provider"
+import { Button } from "./ui/button"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "./ui/card"
 import { Input } from "./ui/input"
 import { useWallet } from "./wallet-provider"
-import { removeQuotes } from '@/lib/utils'
 
 const ATTEMPTS_PER_ETH = 100n
 
@@ -31,57 +52,58 @@ export interface PromptProps {
   className?: string
 }
 
+interface Message {
+  role: string
+  message: string
+}
+
 export const Prompt = ({ className }: PromptProps) => {
-  const { suaveWallet, publicClient, account } = useWallet()
+  const { suaveWallet, publicClient, creditBalance } = useSuaveWallet()
+  const { address } = useAccount()
   const [inputValue, setInputValue] = useState("")
   const [prompts, setPrompts] = useState<string[]>([])
-  const [messages, setMessages] = useState<string[]>([])
+  const [messages, setMessages] = useState<Message[]>([])
+
   const [pendingTxs, setPendingTxs] = useState<Hash[]>([])
   const [threadId, setThreadId] = useState<string>()
-  const [balance, setBalance] = useState<bigint>()
 
   useEffect(() => {
-    if (suaveWallet) {
-      fetchTokenBalance()
-    }
     if (publicClient) {
       publicClient
         .getContractEvents({
-          abi: suciphus.abi,
+          abi: suciphusDeployment.abi,
           address: suciphusDeployment.address,
+          fromBlock: "earliest",
+          toBlock: "latest",
         })
         .then((logs) => {
-          console.debug({ logs })
+          console.log({ logs })
+          const relevantLogs = logs.filter(
+            (log) => log.args && log.args.player === address
+          )
+          console.log({ relevantLogs })
+          relevantLogs.forEach((log) => {
+            if (log.args.threadId) {
+              const decodedThreadId = removeQuotes(log.args.threadId)
+              setThreadId(decodedThreadId)
+              console.log("threadId set to:", decodedThreadId)
+            }
+          })
         })
       publicClient.watchPendingTransactions({
         onTransactions: async (txHashes) => {
-          // await fetchState()
           await fetchPendingReceipts(txHashes)
-          await fetchTokenBalance()
         },
       })
     }
-  }, [publicClient, pendingTxs, suaveWallet])
+  }, [publicClient, pendingTxs])
 
-  const fetchTokenBalance = async () => {
-    if (suaveWallet && publicClient) {
-      const newBalance = await publicClient.call({
-        to: wethDeployment.address,
-        data: encodeFunctionData({
-          functionName: "balanceOf",
-          args: [suaveWallet.account.address],
-          abi: weth.abi,
-        }),
-        type: "0x0",
-      })
-      if (newBalance.data) {
-        console.debug("new balance data", newBalance.data)
-        const nb = hexToBigInt(newBalance.data)
-        setBalance(nb)
-        console.debug("balance", nb)
-      }
+  useEffect(() => {
+    if (publicClient && threadId) {
+      console.log({ threadId })
+      // fetchMessages()
     }
-  }
+  }, [publicClient, threadId, suaveWallet])
 
   const fetchPendingReceipts = async (txHashes: Hash[]) => {
     console.debug("fetchPendingReceipts", { txHashes })
@@ -110,14 +132,24 @@ export const Prompt = ({ className }: PromptProps) => {
 
               console.debug("decoded log", decoded)
               if (decoded.args) {
-                if (decoded.eventName === "PromptSubmitted" && "threadId" in decoded.args) {
-                  const decodedThreadId = removeQuotes(decoded.args.threadId as string)
+                if (
+                  decoded.eventName === "PromptSubmitted" &&
+                  "threadId" in decoded.args
+                ) {
+                  const decodedThreadId = removeQuotes(
+                    decoded.args.threadId as string
+                  )
                   setThreadId(decodedThreadId)
                   console.log("threadId", decodedThreadId)
-                }
-                else if (decoded.eventName === "LogStrings" && "values" in decoded.args) {
+                } else if (
+                  decoded.eventName === "LogStrings" &&
+                  "values" in decoded.args
+                ) {
                   console.log("decoded messages", decoded.args.values)
-                  const decodedMessages = (decoded.args.values as string[]).map(removeQuotes)
+                  const decodedMessages = (decoded.args.values as string[]).map(
+                    (jsonStr) => JSON.parse(jsonStr) as Message
+                  )
+                  console.log({ decodedMessages })
                   setMessages(decodedMessages)
                 }
               }
@@ -130,7 +162,13 @@ export const Prompt = ({ className }: PromptProps) => {
   }
 
   const fetchMessages = async () => {
+    console.log("fetching messages")
     const nonce = await getUserNonce()
+    console.log(threadId && suaveWallet && publicClient, {
+      threadId,
+      suaveWallet,
+      publicClient,
+    })
     if (threadId && suaveWallet && publicClient) {
       const txHash = await readMessages({
         suaveWallet,
@@ -138,6 +176,7 @@ export const Prompt = ({ className }: PromptProps) => {
         prompt: "",
         nonce,
       })
+      console.log(txHash)
       setPendingTxs([...pendingTxs, txHash])
     }
   }
@@ -150,11 +189,11 @@ export const Prompt = ({ className }: PromptProps) => {
     if (!publicClient) {
       throw new Error("publicClient not initialized")
     }
-    if (!suaveWallet?.account.address) {
+    if (!address) {
       throw new Error("wallet not initialized")
     }
     return await publicClient.getTransactionCount({
-      address: suaveWallet?.account.address,
+      address,
     })
   }
 
@@ -162,13 +201,13 @@ export const Prompt = ({ className }: PromptProps) => {
     if (event.key === "Enter" && inputValue.trim() !== "") {
       setPrompts([...prompts, inputValue])
       setInputValue("") // Clear the input after adding
-      if (account && suaveWallet && publicClient) {
-        console.log(account)
+      if (address && suaveWallet && publicClient) {
+        console.log(address)
 
         // Compute nonce for the transaction
         const nonce = await getUserNonce()
         await publicClient.getTransactionCount({
-          address: account,
+          address,
         })
         console.log(`sending prompt with threadId ${threadId}`)
         const hash = await submitPrompt({
@@ -185,22 +224,12 @@ export const Prompt = ({ className }: PromptProps) => {
   }
 
   const isUserPrompt = (msg: string) => {
+    console.log({ prompts })
     return prompts.includes(msg)
   }
 
-  const doMintTokens = async () => {
-    if (suaveWallet) {
-      const nonce = await getUserNonce()
-      const txHash = await mintTokens({
-        suaveWallet,
-        value: parseEther("0.1"),
-        nonce,
-      })
-      setPendingTxs([...pendingTxs, txHash])
-    }
-  }
-
   const doCheckSubmission = async () => {
+    console.log({ threadId })
     if (suaveWallet && threadId) {
       const nonce = await getUserNonce()
       const txHash = await checkSubmission({
@@ -210,52 +239,78 @@ export const Prompt = ({ className }: PromptProps) => {
       })
       setPendingTxs([...pendingTxs, txHash])
     } else {
-      throw new Error("undefined element(s) must be defined" + JSON.stringify({ threadId, suaveWallet }))
+      throw new Error(
+        "undefined element(s) must be defined" +
+          JSON.stringify({ threadId, suaveWallet })
+      )
     }
   }
 
-  return (<>
-    <div className="text-xs header">
-      {balance && <>Balance: {formatEther(balance * ATTEMPTS_PER_ETH)} attempts</>}
-      <div style={{ marginLeft: 12 }}>
-        <button onClick={doMintTokens}>(Mint Tokens)</button>
-      </div>
-    </div>
-    <div className={`w-full ${className}`}>
-      <div className='text-sm'>
-        {/* {threadId && <div>Thread ID: {threadId}</div>} */}
-        {pendingTxs.length > 0 && (
-          // TODO: make this a floating notification
-          <div>
-            <p>Pending</p>
-            <ul>
-              {pendingTxs.map((tx, index) => (
-                <li key={index}>{tx}</li>
-              ))}
-            </ul>
+  return (
+    <div className="w-full">
+      <div className="space-y-2">
+        <div className="flex flex-col">
+          {/* {messages.toReversed().map(({ role, message }, idx) =>
+            role === "user" ? (
+              <Card
+                key={`key_${idx}`}
+                className="ml-auto w-3/4 bg-muted p-4 text-sm"
+              >
+                <p>{message}</p>
+              </Card>
+            ) : (
+              <Card key={`key_${idx}`} className="w-3/4 p-4 text-sm">
+                <p>{message}</p>
+              </Card>
+            )
+          )} */}
+        </div>
+        <Input
+          placeholder={"Enter your prompt"}
+          disabled={!suaveWallet || creditBalance === 0n}
+          value={inputValue}
+          onChange={handleInputChange}
+          onKeyDown={handleKeyPress}
+          className="w-full"
+        />
+        {creditBalance === 0n && (
+          <div className="mx-2 text-xs text-muted-foreground">
+            Insufficient credits.{" "}
+            <AddCredits>
+              <Button className="h-min w-min p-0 text-xs" variant="link">
+                Add more
+              </Button>
+            </AddCredits>{" "}
+            to play.
           </div>
         )}
+        {/* <Button
+          variant="outline"
+          className="absolute  inset-0 opacity-0 backdrop-blur-lg transition-opacity duration-300 group-hover:opacity-100"
+        >
+          Add Credits
+        </Button> */}
       </div>
       <div className="grid grid-cols-3">
         <div className={`col-span-1`}>
           <div>
-            <Input
-              placeholder="Enter your prompt"
-              disabled={!suaveWallet}
-              value={inputValue}
-              onChange={handleInputChange}
-              onKeyDown={handleKeyPress}
-            />
-          </div>
-          <div>
             <button onClick={doCheckSubmission}>Check Submission</button>
           </div>
-          {!messages.includes(prompts[prompts.length - 1]) && pendingTxs.length === 0 && threadId && <button onClick={fetchMessages}>Fetch New Responses</button >}
+          {!messages.includes(prompts[prompts.length - 1]) &&
+            pendingTxs.length === 0 &&
+            threadId && (
+              <button onClick={fetchMessages}>Fetch New Responses</button>
+            )}
         </div>
         <div className={`col-span-2`} style={{ padding: 16, marginLeft: 16 }}>
-          {messages.toReversed().map((msg, idx) => <div key={`key_${idx}`}>{isUserPrompt(msg) ? "> " : ""}{msg}</div>)}
+          {messages.toReversed().map((msg, idx) => (
+            <div key={`key_${idx}`}>
+              {isUserPrompt(msg) ? "> " : ""}
+              {msg}
+            </div>
+          ))}
         </div>
       </div>
     </div>
-  </>)
+  )
 }

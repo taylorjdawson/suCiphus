@@ -10,7 +10,10 @@ import {
   SuaveWallet,
   type TransactionRequestSuave,
 } from "@flashbots/suave-viem/chains/utils"
-import { suciphus as suciphusDeployment, weth as wethDeployment } from "@repo/suciphus-suapp"
+import {
+  suciphus as suciphusDeployment,
+  weth as wethDeployment,
+} from "@repo/suciphus-suapp"
 import suciphus from "@repo/suciphus-suapp/out/Suciphus.sol/Suciphus.json"
 import weth9 from "@repo/suciphus-suapp/out/WETH9.sol/WETH9.json"
 
@@ -50,7 +53,8 @@ const encodePrompt = (prompt: string, threadId: string) => {
         ],
         type: "tuple",
       },
-    ], [
+    ],
+    [
       {
         prompt,
         threadId,
@@ -66,7 +70,17 @@ const defaultRequest = {
   to: suciphusDeployment.address,
 }
 
-const suciphusConfRequest = ({args, confidentialInputs, functionName, nonce}: {functionName: string, confidentialInputs?: Hex, args?: any[], nonce?: number}) => {
+const suciphusConfRequest = ({
+  args,
+  confidentialInputs,
+  functionName,
+  nonce,
+}: {
+  functionName: string
+  confidentialInputs?: Hex
+  args?: any[]
+  nonce?: number
+}) => {
   return {
     ...defaultRequest,
     data: encodeFunctionData({
@@ -106,6 +120,7 @@ export const readMessages = async (params: SubmitPromptParams) => {
 
 export const mintTokens = async (params: MintTokensParams) => {
   const { value, suaveWallet, nonce } = params
+
   const tx: TransactionRequestSuave = {
     data: encodeFunctionData({
       abi: weth9.abi,
@@ -118,6 +133,7 @@ export const mintTokens = async (params: MintTokensParams) => {
     to: wethDeployment.address,
     gas: 150n * 1000n,
   }
+  console.log({ tx })
   return await suaveWallet.sendTransaction(tx)
 }
 
