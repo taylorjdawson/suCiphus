@@ -32,8 +32,12 @@ export default function Threads() {
   }
 
   useEffect(() => {
-    console.log(threads[0], threadId[0])
+    console.log(threads, threadId)
   }, [threads])
+
+  const threadIdMatches = (thread: string) => {
+    return threadId && threadId.includes(thread)
+  }
 
   return (
     <Card>
@@ -46,10 +50,10 @@ export default function Threads() {
         {/* Add New Thread button */}
         {threads?.map((thread) => (
           <Button
-            variant={threadId === thread ? "secondary" : "ghost"} // Conditional variant
+            variant={threadIdMatches(thread) ? "secondary" : "ghost"} // Conditional variant
             asChild
             key={thread}
-            className={`w-full justify-start ${threadId === thread ? "font-bold" : ""}`} // Conditional bold style
+            className={`w-full justify-start ${threadIdMatches(thread) ? "font-bold" : ""}`} // Conditional bold style
           >
             <Link href={`/player/${thread.replace(/"/g, "")}`}>
               {truncateId(thread.replace(/"/g, ""))}

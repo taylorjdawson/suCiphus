@@ -18,7 +18,7 @@ import {
   TransactionReceiptSuave,
   TransactionRequestSuave,
 } from "@flashbots/suave-viem/chains/utils"
-import { Chain, createPublicClient, http, PublicClient } from "viem"
+import { Chain, createPublicClient, http, PublicClient } from "@flashbots/suave-viem"
 
 import "viem/window"
 

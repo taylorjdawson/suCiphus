@@ -13,11 +13,11 @@
     "contracts:deploy": "./deploy.sh",
     "rebuild-deploy": "pnpm run contracts:build && pnpm run contracts:deploy && pnpm build"
   },
-  "dependencies": {
-    "viem": "^2.9.25"
-  },
   "devDependencies": {
     "chokidar-cli": "^3.0.0",
     "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "@flashbots/suave-viem": "0.0.0-main.20240731T114045"
   }
 }

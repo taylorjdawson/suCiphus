@@ -79,8 +79,15 @@ export const Prompt = ({ className }: PromptProps) => {
         .then((logs) => {
           console.log({ logs })
           const relevantLogs = logs.filter(
-            (log) => log.args && log.args.player === address
-          )
+            (log) => 'args' in log
+          ).map((log: any) => ({
+            args: {
+              ...(log.args as { player: Address, threadId: string, runId: string, round: bigint, season: bigint }),
+              player: log.args.player,
+              threadId: removeQuotes(log.args.threadId)
+            }
+          }))
+            .filter(log => log.args.player === address)
           console.log({ relevantLogs })
           relevantLogs.forEach((log) => {
             if (log.args.threadId) {
@@ -241,7 +248,7 @@ export const Prompt = ({ className }: PromptProps) => {
     } else {
       throw new Error(
         "undefined element(s) must be defined" +
-          JSON.stringify({ threadId, suaveWallet })
+        JSON.stringify({ threadId, suaveWallet })
       )
     }
   }
@@ -296,7 +303,7 @@ export const Prompt = ({ className }: PromptProps) => {
           <div>
             <button onClick={doCheckSubmission}>Check Submission</button>
           </div>
-          {!messages.includes(prompts[prompts.length - 1]) &&
+          {!messages.map(m => m.message).includes(prompts[prompts.length - 1]) &&
             pendingTxs.length === 0 &&
             threadId && (
               <button onClick={fetchMessages}>Fetch New Responses</button>
@@ -305,8 +312,8 @@ export const Prompt = ({ className }: PromptProps) => {
         <div className={`col-span-2`} style={{ padding: 16, marginLeft: 16 }}>
           {messages.toReversed().map((msg, idx) => (
             <div key={`key_${idx}`}>
-              {isUserPrompt(msg) ? "> " : ""}
-              {msg}
+              {isUserPrompt(msg.message) ? "> " : ""}
+              {msg.message}
             </div>
           ))}
         </div>

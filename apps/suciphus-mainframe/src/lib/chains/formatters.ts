@@ -27,7 +27,7 @@ import {
   Transaction,
   TransactionRequestBase,
   zeroAddress,
-} from "viem"
+} from "@flashbots/suave-viem"
 
 export const formattersSuave = {
   block: /*#__PURE__*/ defineBlock({

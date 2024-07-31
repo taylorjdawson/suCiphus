@@ -1,6 +1,7 @@
 import {
   encodeAbiParameters,
   encodeFunctionData,
+  Hash,
   Transport,
   type Hex,
 } from "@flashbots/suave-viem"
@@ -108,7 +109,10 @@ export const submitPrompt = async (params: SubmitPromptParams) => {
   return await suaveWallet.sendTransaction(tx)
 }
 
-export const readMessages = async (params: SubmitPromptParams) => {
+/** Submit confidential request to fetch latest messages from thread.
+ * @returns The transaction hash.
+ */
+export const readMessages = async (params: SubmitPromptParams): Promise<Hash> => {
   const { threadId, suaveWallet, nonce } = params
   const tx = suciphusConfRequest({
     functionName: "readMessages",

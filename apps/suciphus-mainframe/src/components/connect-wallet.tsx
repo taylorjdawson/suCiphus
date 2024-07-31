@@ -15,14 +15,14 @@ export const ConnectWallet = () => {
   const connector = connectors.filter(
     (connector) => connector.id === "metaMaskSDK"
   )[0]
-  // const router = useRouter()
-  // const pathname = usePathname()
+  const router = useRouter()
+  const pathname = usePathname()
 
-  // useEffect(() => {
-  //   if (connected && pathname !== "/player") {
-  //     router.replace("/player")
-  //   }
-  // }, [connected])
+  useEffect(() => {
+    if (connectors[0] && pathname !== "/player") {
+      router.replace("/player")
+    }
+  }, [connectors])
 
   return (
     <Button

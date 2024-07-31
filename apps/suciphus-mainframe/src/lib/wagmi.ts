@@ -1,5 +1,5 @@
 // import { getDefaultConfig } from "@rainbow-me/rainbowkit"
-import { defineChain } from "viem"
+import { defineChain } from "@flashbots/suave-viem"
 import { createConfig, http } from "wagmi"
 import {
   arbitrum,

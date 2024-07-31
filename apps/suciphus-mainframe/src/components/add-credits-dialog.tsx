@@ -1,6 +1,6 @@
 import React, { useState } from "react" // Ensure React is imported for typing
 import { Gem } from "lucide-react"
-import { parseEther } from "viem"
+import { parseEther } from "@flashbots/suave-viem"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
