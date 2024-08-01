@@ -25,6 +25,7 @@ const KETTLE_ADDRESS = "0x03493869959C866713C33669cA118E774A30A0E5"
 
 type SubmitPromptParams = {
   prompt?: string
+  runId?: string
   value?: bigint
   suaveWallet: SuaveWallet<Transport>
   threadId: string
@@ -37,7 +38,7 @@ type MintTokensParams = {
   nonce?: number
 }
 
-const encodePrompt = (prompt: string, threadId: string) => {
+const encodePrompt = (prompt: string, threadId: string, runId: string) => {
   return encodeAbiParameters(
     [
       {
@@ -50,6 +51,10 @@ const encodePrompt = (prompt: string, threadId: string) => {
             name: "threadId",
             type: "string",
           },
+          {
+            name: "runId",
+            type: "string",
+          },
         ],
         type: "tuple",
       },
@@ -58,6 +63,7 @@ const encodePrompt = (prompt: string, threadId: string) => {
       {
         prompt,
         threadId,
+        runId,
       },
     ]
   )
@@ -101,7 +107,7 @@ export const submitPrompt = async (params: SubmitPromptParams) => {
   }
   const tx = suciphusConfRequest({
     functionName: "submitPrompt",
-    confidentialInputs: encodePrompt(prompt, threadId),
+    confidentialInputs: encodePrompt(prompt, threadId, ""),
     nonce,
   })
 
@@ -112,7 +118,7 @@ export const readMessages = async (params: SubmitPromptParams) => {
   const { threadId, suaveWallet, nonce } = params
   const tx = suciphusConfRequest({
     functionName: "readMessages",
-    confidentialInputs: encodePrompt("", threadId),
+    confidentialInputs: encodePrompt("", threadId, ""),
     nonce,
   })
   return await suaveWallet.sendTransaction(tx)
@@ -138,11 +144,11 @@ export const mintTokens = async (params: MintTokensParams) => {
 }
 
 export const checkSubmission = async (params: SubmitPromptParams) => {
-  const { threadId, suaveWallet, nonce } = params
+  const { threadId, runId, suaveWallet, nonce } = params
   return await suaveWallet.sendTransaction({
     ...suciphusConfRequest({
       functionName: "checkSubmission",
-      confidentialInputs: encodePrompt("", threadId),
+      confidentialInputs: encodePrompt("", threadId, runId || ""),
       nonce,
     }),
   })

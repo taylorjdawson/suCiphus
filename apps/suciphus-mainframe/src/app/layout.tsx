@@ -5,6 +5,7 @@ import { Inter } from "next/font/google"
 
 import { siteConfig } from "@/config/site"
 import { cn } from "@/lib/utils"
+import { Toaster } from "@/components/ui/sonner"
 import { Providers } from "@/components/providers"
 import { ThemeProvider } from "@/components/theme-provider"
 
@@ -81,6 +82,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
           disableTransitionOnChange
         >
           <Providers>{children}</Providers>
+          <Toaster />
         </ThemeProvider>
       </body>
     </html>

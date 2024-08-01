@@ -1,6 +1,7 @@
 import { ReactNode } from "react"
 
 import Account from "@/components/account"
+import SideMenu from "@/components/side-menu"
 import Threads from "@/components/threads"
 
 export default function Layout({ children }: { children: ReactNode }) {
@@ -10,9 +11,11 @@ export default function Layout({ children }: { children: ReactNode }) {
         <Account />
       </div>
 
-      <div className="my-auto flex h-full w-3/4  items-center gap-8">
-        <Threads />
+      <div className="my-12 flex h-full w-full justify-center gap-4 ">
         {children}
+        <div className="">
+          <Threads />
+        </div>
       </div>
     </main>
   )

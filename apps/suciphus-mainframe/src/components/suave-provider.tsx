@@ -31,6 +31,7 @@ interface SuaveWalletContextType {
   nonce?: number
   creditBalance?: bigint
   threads?: string[]
+  refreshBalance?: () => Promise<void>
 }
 
 const SuaveWalletContext = createContext<SuaveWalletContextType>({})
@@ -70,9 +71,7 @@ export const SuaveWalletProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [publicClient, address])
 
   const fetchCreditBalance = async () => {
-    console.log("fetchCreditBalance")
     if (suaveWallet && publicClient) {
-      console.log("fetchingg")
       const newBalance = (await publicClient.readContract({
         address: weth.address,
         abi: weth.abi,
@@ -93,15 +92,22 @@ export const SuaveWalletProvider: React.FC<{ children: React.ReactNode }> = ({
     fetchCreditBalance()
   }, [suaveWallet, publicClient])
 
+  const refreshBalance = async () => {
+    console.log("refreshBalance")
+    await fetchCreditBalance()
+  }
+
   const fetchThreads = async () => {
     if (suaveWallet && publicClient && address) {
-      const threadIds = (await publicClient.readContract({
+      const rawThreadIds = (await publicClient.readContract({
         address: suciphus.address, // Replace with your contract's address
         abi: suciphus.abi, // Replace with your contract's ABI
         functionName: "getThreadIdsByPlayer",
         args: [address],
       })) as string[]
-      console.log(threadIds, { address })
+      const threadIds = [
+        ...new Set(rawThreadIds.map((id) => id.replace(/"/g, ""))),
+      ]
       setThreads(threadIds)
     }
   }
@@ -121,6 +127,7 @@ export const SuaveWalletProvider: React.FC<{ children: React.ReactNode }> = ({
       throw new Error("Wallet or nonce not initialized")
     }
     const value = PRICE_PER_CREDIT * credits
+    console.log("purchaseCredits", { nonce })
     await mintTokens({
       suaveWallet,
       value,
@@ -140,6 +147,7 @@ export const SuaveWalletProvider: React.FC<{ children: React.ReactNode }> = ({
         nonce,
         creditBalance,
         threads,
+        refreshBalance,
       }}
     >
       {children}

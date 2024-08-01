@@ -1,7 +1,8 @@
 "use client"
 
 import * as React from "react"
-import { KeyboardEvent, useEffect, useState } from "react"
+import { KeyboardEvent, useEffect, useRef, useState } from "react"
+import { useRouter } from "next/navigation"
 import {
   Address,
   CustomTransport,
@@ -21,8 +22,13 @@ import {
   suciphus as suciphusDeployment,
   weth as wethDeployment,
 } from "@repo/suciphus-suapp/src/suciphus"
+import { Loader } from "lucide-react"
+import { MDXRemote } from "next-mdx-remote/rsc"
+import TextareaAutosize from "react-textarea-autosize"
+// import { Message } from "openai/resources/beta/threads/messages.mjs"
 import { useAccount } from "wagmi"
 
+import { getMessages, Message } from "@/lib/openai"
 import {
   checkSubmission,
   mintTokens,
@@ -33,6 +39,7 @@ import { removeQuotes } from "@/lib/utils"
 
 import AddCredits from "./add-credits"
 import AddCreditsDialog from "./add-credits-dialog"
+import { MessageCard } from "./message" // Import the new Message component
 import { useSuaveWallet } from "./suave-provider"
 import { Button } from "./ui/button"
 import {
@@ -44,72 +51,76 @@ import {
   CardTitle,
 } from "./ui/card"
 import { Input } from "./ui/input"
-import { useWallet } from "./wallet-provider"
+import { NakedInput } from "./ui/input.naked"
+import { ScrollArea } from "./ui/scroll-area"
+import { Textarea } from "./ui/textarea"
+import { NakedTextarea } from "./ui/textarea.naked"
 
-const ATTEMPTS_PER_ETH = 100n
+const ATTEMPTS_PER_ETH = 1000n
 
 export interface PromptProps {
   className?: string
+  threadId: string
 }
 
-interface Message {
-  role: string
-  message: string
-}
-
-export const Prompt = ({ className }: PromptProps) => {
-  const { suaveWallet, publicClient, creditBalance } = useSuaveWallet()
+export const Prompt = ({ className, threadId }: PromptProps) => {
+  const router = useRouter()
+  const { suaveWallet, publicClient, creditBalance, threads, refreshBalance } =
+    useSuaveWallet()
   const { address } = useAccount()
   const [inputValue, setInputValue] = useState("")
   const [prompts, setPrompts] = useState<string[]>([])
   const [messages, setMessages] = useState<Message[]>([])
-
   const [pendingTxs, setPendingTxs] = useState<Hash[]>([])
-  const [threadId, setThreadId] = useState<string>()
+  const [fetchingMessages, setFetchingMessages] = useState(false)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const [isInitialLoad, setIsInitialLoad] = useState(true)
+  const [lastRun, setLastRun] = useState<{
+    runId: string
+    threadId: string
+  } | null>(null) // New state variable for lastRunId
 
   useEffect(() => {
-    if (publicClient) {
-      publicClient
-        .getContractEvents({
-          abi: suciphusDeployment.abi,
-          address: suciphusDeployment.address,
-          fromBlock: "earliest",
-          toBlock: "latest",
+    if (messages.length > 0) {
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({
+          behavior: isInitialLoad ? "instant" : "smooth",
         })
-        .then((logs) => {
-          console.log({ logs })
-          const relevantLogs = logs.filter(
-            (log) => log.args && log.args.player === address
-          )
-          console.log({ relevantLogs })
-          relevantLogs.forEach((log) => {
-            if (log.args.threadId) {
-              const decodedThreadId = removeQuotes(log.args.threadId)
-              setThreadId(decodedThreadId)
-              console.log("threadId set to:", decodedThreadId)
-            }
-          })
-        })
-      publicClient.watchPendingTransactions({
-        onTransactions: async (txHashes) => {
-          await fetchPendingReceipts(txHashes)
-        },
+      }
+      if (isInitialLoad) {
+        setIsInitialLoad(false)
+      }
+    }
+  }, [messages])
+
+  useEffect(() => {
+    console.log({ threadId, threads })
+    if (threadId && threadId !== "new") {
+      console.log({ threadId })
+      fetchMessages()
+    } else if (!threadId && threads?.length) {
+      router.push(`/player/${threads[0]}`)
+    }
+  }, [threadId, threads])
+
+  useEffect(() => {
+    if (lastRun && lastRun.runId && lastRun.threadId) {
+      pollGetLastMessage(lastRun.threadId, lastRun.runId).then((message) => {
+        if (message) {
+          setMessages([message, ...messages])
+        }
       })
     }
-  }, [publicClient, pendingTxs])
-
-  useEffect(() => {
-    if (publicClient && threadId) {
-      console.log({ threadId })
-      // fetchMessages()
-    }
-  }, [publicClient, threadId, suaveWallet])
+  }, [lastRun])
 
   const fetchPendingReceipts = async (txHashes: Hash[]) => {
     console.debug("fetchPendingReceipts", { txHashes })
     if (publicClient) {
+      console.debug("has publicClient")
       for (const txHash of txHashes) {
+        console.debug("txHash", txHash, pendingTxs)
         if (pendingTxs.includes(txHash)) {
+          console.debug("pendingTxs includes txHash", txHash)
           // get receipt
           const receipt = await publicClient.getTransactionReceipt({
             hash: txHash,
@@ -134,13 +145,21 @@ export const Prompt = ({ className }: PromptProps) => {
               if (decoded.args) {
                 if (
                   decoded.eventName === "PromptSubmitted" &&
+                  "runId" in decoded.args &&
                   "threadId" in decoded.args
                 ) {
+                  const decodedRunId = removeQuotes(
+                    decoded.args.runId as string
+                  )
                   const decodedThreadId = removeQuotes(
                     decoded.args.threadId as string
                   )
-                  setThreadId(decodedThreadId)
-                  console.log("threadId", decodedThreadId)
+                  // setThreadId(decodedThreadId)
+                  console.log("runId", decodedRunId)
+                  setLastRun({
+                    runId: decodedRunId,
+                    threadId: decodedThreadId,
+                  }) // Set the lastRunId state
                 } else if (
                   decoded.eventName === "LogStrings" &&
                   "values" in decoded.args
@@ -150,7 +169,7 @@ export const Prompt = ({ className }: PromptProps) => {
                     (jsonStr) => JSON.parse(jsonStr) as Message
                   )
                   console.log({ decodedMessages })
-                  setMessages(decodedMessages)
+                  // setMessages(decodedMessages)
                 }
               }
             }
@@ -162,26 +181,49 @@ export const Prompt = ({ className }: PromptProps) => {
   }
 
   const fetchMessages = async () => {
-    console.log("fetching messages")
-    const nonce = await getUserNonce()
-    console.log(threadId && suaveWallet && publicClient, {
-      threadId,
-      suaveWallet,
-      publicClient,
-    })
-    if (threadId && suaveWallet && publicClient) {
-      const txHash = await readMessages({
-        suaveWallet,
-        threadId: threadId,
-        prompt: "",
-        nonce,
+    setFetchingMessages(true)
+
+    getMessages(threadId)
+      .then((messages) => {
+        setMessages(messages)
+        setFetchingMessages(false)
       })
-      console.log(txHash)
-      setPendingTxs([...pendingTxs, txHash])
+      .catch((error) => {
+        console.error("Failed to fetch messages:", error)
+        setFetchingMessages(false)
+      })
+  }
+
+  const pollGetLastMessage = async (
+    threadId: string,
+    runId: string,
+    attempt = 0 // Add an attempt counter with a default value of 0
+  ): Promise<Message | undefined> => {
+    console.log("pollGetLastMessage", { threadId, runId, attempt })
+    try {
+      const messages = await getMessages(threadId, runId)
+      console.log("pollGetLastMessage", { messages })
+
+      if (messages.length === 0) {
+        if (attempt < 10) {
+          // Check if the attempt count is less than 3 (for a total of 4 tries)
+          await new Promise((resolve) => setTimeout(resolve, 800))
+          return pollGetLastMessage(threadId, runId, attempt + 1) // Recurse with incremented attempt counter
+        } else {
+          console.log("Max retries reached, stopping poll.")
+          return undefined // Return undefined after max attempts
+        }
+      } else {
+        // Return the last message if it is not pending
+        return messages[0]
+      }
+    } catch (error) {
+      console.error("Error polling for last message:", error)
+      return undefined // Return undefined in case of error
     }
   }
 
-  const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInputValue(event.target.value)
   }
 
@@ -197,38 +239,79 @@ export const Prompt = ({ className }: PromptProps) => {
     })
   }
 
-  const handleKeyPress = async (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Enter" && inputValue.trim() !== "") {
-      setPrompts([...prompts, inputValue])
-      setInputValue("") // Clear the input after adding
-      if (address && suaveWallet && publicClient) {
-        console.log(address)
+  const handleKeyPress = async (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === "Enter") {
+      if (!event.shiftKey) {
+        event.preventDefault() // Prevent the default Enter key behavior (newline)
+        if (inputValue.trim() !== "") {
+          setPrompts([...prompts, inputValue])
+          setMessages([
+            {
+              role: "user",
+              content: inputValue,
+              createdAt: new Date().getTime(),
+              status: "pending",
+              runId: null,
+              id: "",
+              threadId: null,
+            },
+            ...messages,
+          ])
+          setInputValue("") // Clear the input after adding
 
-        // Compute nonce for the transaction
-        const nonce = await getUserNonce()
-        await publicClient.getTransactionCount({
-          address,
-        })
-        console.log(`sending prompt with threadId ${threadId}`)
-        const hash = await submitPrompt({
-          prompt: inputValue,
-          threadId: threadId || "", // TODO: cache this in LocalStorage or smth
-          suaveWallet,
-          nonce, // Pass the computed nonce
-        })
+          if (address && suaveWallet && publicClient) {
+            console.log(address)
 
-        console.debug("tx hash", hash)
-        setPendingTxs([...pendingTxs, hash])
+            // Compute nonce for the transaction
+            const nonce = await getUserNonce()
+            console.log(`sending prompt with threadId ${threadId}`)
+            const escapedInputValue = JSON.stringify(inputValue).slice(1, -1)
+            console.log(escapedInputValue)
+            const hash = await submitPrompt({
+              prompt: escapedInputValue, // Escape inputValue for JSON
+              threadId: threadId && threadId !== "new" ? threadId : "",
+              suaveWallet,
+              nonce, // Pass the computed nonce
+            }).catch((error) => {
+              console.error("error submitting prompt", error)
+              setMessages(messages) // Update the state with the modified array
+              return "0x" as const
+            })
+
+            if (hash !== "0x") {
+              console.debug("tx hash", hash)
+              setMessages((currentMessages) => [
+                {
+                  ...currentMessages[0],
+                  status: "complete", // Update the status of the first message
+                  runId: hash, // Optionally, you can also set the runId to the transaction hash
+                },
+                ...currentMessages.slice(1),
+              ])
+
+              setPendingTxs((currentTxs) => [...currentTxs, hash])
+              refreshBalance?.()
+            }
+          }
+        }
+      } else {
+        // Allow Shift+Enter to create a new line
+        return
       }
     }
   }
+
+  useEffect(() => {
+    console.log({ pendingTxs })
+    fetchPendingReceipts(pendingTxs)
+  }, [pendingTxs])
 
   const isUserPrompt = (msg: string) => {
     console.log({ prompts })
     return prompts.includes(msg)
   }
 
-  const doCheckSubmission = async () => {
+  const doCheckSubmission = async (runId: string) => {
     console.log({ threadId })
     if (suaveWallet && threadId) {
       const nonce = await getUserNonce()
@@ -246,69 +329,84 @@ export const Prompt = ({ className }: PromptProps) => {
     }
   }
 
+  // useEffect(() => {
+  //   messages.toReversed().map((message, idx) => {
+  //     console.log({ message })
+  //     console.log({ address })
+  //     console.log(
+  //       "has address",
+  //       message.content.toLowerCase().includes(address?.toLowerCase()),
+  //       { message }
+  //     )
+  //     console.log(
+  //       message.role === "assistant" &&
+  //         !!address &&
+  //         message.content.toLowerCase().includes(address.toLowerCase())
+  //     )
+  //   })
+  // }, [messages])
+
   return (
-    <div className="w-full">
-      <div className="space-y-2">
-        <div className="flex flex-col">
-          {/* {messages.toReversed().map(({ role, message }, idx) =>
-            role === "user" ? (
-              <Card
-                key={`key_${idx}`}
-                className="ml-auto w-3/4 bg-muted p-4 text-sm"
-              >
-                <p>{message}</p>
-              </Card>
+    <div className="flex h-full w-full flex-col justify-end">
+      <div className="flex flex-col justify-end gap-4">
+        <ScrollArea className=" h-[calc(100vh-20rem)] p-8">
+          <div className="flex flex-col gap-6">
+            {fetchingMessages ? (
+              <div className="flex h-full w-full flex-col items-center justify-start gap-4">
+                <Loader strokeWidth={1} className="animate-spin" />
+                <div className="text-sm font-medium text-muted-foreground">
+                  Retrieving messages
+                </div>
+              </div>
+            ) : messages.length > 0 ? (
+              messages
+                .toReversed()
+                .map((message, idx) => (
+                  <MessageCard
+                    key={`key_${idx}`}
+                    message={message}
+                    checkSubmission={doCheckSubmission}
+                    shouldCheckSubmission={
+                      message.role === "assistant" &&
+                      !!address &&
+                      message.content
+                        .toLowerCase()
+                        .includes(address.toLowerCase())
+                    }
+                  />
+                ))
             ) : (
-              <Card key={`key_${idx}`} className="w-3/4 p-4 text-sm">
-                <p>{message}</p>
-              </Card>
-            )
-          )} */}
-        </div>
-        <Input
-          placeholder={"Enter your prompt"}
-          disabled={!suaveWallet || creditBalance === 0n}
-          value={inputValue}
-          onChange={handleInputChange}
-          onKeyDown={handleKeyPress}
-          className="w-full"
-        />
-        {creditBalance === 0n && (
-          <div className="mx-2 text-xs text-muted-foreground">
-            Insufficient credits.{" "}
-            <AddCredits>
-              <Button className="h-min w-min p-0 text-xs" variant="link">
-                Add more
-              </Button>
-            </AddCredits>{" "}
-            to play.
-          </div>
-        )}
-        {/* <Button
-          variant="outline"
-          className="absolute  inset-0 opacity-0 backdrop-blur-lg transition-opacity duration-300 group-hover:opacity-100"
-        >
-          Add Credits
-        </Button> */}
-      </div>
-      <div className="grid grid-cols-3">
-        <div className={`col-span-1`}>
-          <div>
-            <button onClick={doCheckSubmission}>Check Submission</button>
-          </div>
-          {!messages.includes(prompts[prompts.length - 1]) &&
-            pendingTxs.length === 0 &&
-            threadId && (
-              <button onClick={fetchMessages}>Fetch New Responses</button>
+              <div className="flex h-full w-full flex-col items-center justify-start gap-4">
+                <div className="text-sm font-medium text-muted-foreground"></div>
+              </div>
             )}
-        </div>
-        <div className={`col-span-2`} style={{ padding: 16, marginLeft: 16 }}>
-          {messages.toReversed().map((msg, idx) => (
-            <div key={`key_${idx}`}>
-              {isUserPrompt(msg) ? "> " : ""}
-              {msg}
+            <div ref={messagesEndRef} />{" "}
+            {/* Invisible element at the end of the messages */}
+          </div>
+        </ScrollArea>
+
+        <div className="flex flex-col items-center gap-2">
+          {creditBalance === 0n && (
+            <div className="mx-2 text-xs text-muted-foreground">
+              Insufficient credits.{" "}
+              <AddCredits>
+                <Button className="h-min w-min p-0 text-xs" variant="link">
+                  Add more
+                </Button>
+              </AddCredits>{" "}
+              to play.
             </div>
-          ))}
+          )}
+          <Card className="flex min-h-16 w-full items-center justify-center p-4">
+            <NakedTextarea
+              disabled={!suaveWallet || creditBalance === 0n}
+              placeholder="Enter your prompt"
+              value={inputValue}
+              onChange={handleInputChange}
+              onKeyDown={handleKeyPress}
+              className="w-full resize-none"
+            />
+          </Card>
         </div>
       </div>
     </div>

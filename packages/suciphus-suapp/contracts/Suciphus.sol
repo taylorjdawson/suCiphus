@@ -109,6 +109,7 @@ contract Suciphus is Suapp, WithUtils {
     struct Prompt {
         string prompt;
         string threadId;
+        string runId; // Added runId to the Prompt struct
     }
 
     struct AuthRegistration {
@@ -223,10 +224,12 @@ contract Suciphus is Suapp, WithUtils {
         WETH.transferFrom(player, address(this), requiredAmount);
         // Update the round for the threadId
         threadToRound[id(threadId)] = round;
-        // Map threadId to player
-        threadToPlayer[id(threadId)] = player;
-        // Add threadId to the list of threads for the player
-        playerToThreads[player].push(threadId);
+        // Map threadId to player if it's not already mapped
+        if (threadToPlayer[id(threadId)] == address(0)) {
+            threadToPlayer[id(threadId)] = player;
+            // Add threadId to the list of threads for the player
+            playerToThreads[player].push(threadId);
+        }
     }
 
     function submitPrompt() public confidential returns (bytes memory) {
@@ -286,14 +289,21 @@ contract Suciphus is Suapp, WithUtils {
     /// Returns true if submission returned an ethereum address.
     function checkSubmission() public returns (bytes memory) {
         bytes memory confInputs = Context.confidentialInputs();
-        string memory threadId = abi.decode(confInputs, (Prompt)).threadId;
+        Prompt memory prompt = abi.decode(confInputs, (Prompt));
         // TODO: add onlyThreadOwner here and elsewhere
         // Ensure that this thread's submission is within the current round
-        require(threadToRound[id(threadId)] == round, "The round has ended");
+        require(
+            threadToRound[id(prompt.threadId)] == round,
+            "The round has ended"
+        );
 
         Assistant assistant = getAssistant();
 
-        string memory lastMessage = assistant.getLastMessage(threadId);
+        string memory lastMessage = assistant.getMessages(
+            prompt.threadId,
+            prompt.runId,
+            1
+        );
         string memory lowerLastMessage = toLower(lastMessage);
         strings.slice memory lastMessageSlice = lowerLastMessage.toSlice();
         bool containsPlayerAddress = lastMessageSlice.contains(

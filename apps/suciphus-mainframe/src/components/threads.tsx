@@ -1,8 +1,9 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
-import { useParams } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
+import { PlusCircle } from "lucide-react"
 
 import { useSuaveWallet } from "./suave-provider"
 import { Button } from "./ui/button"
@@ -16,12 +17,16 @@ import {
 } from "./ui/card"
 
 export default function Threads() {
+  const router = useRouter()
   const { threads } = useSuaveWallet()
+  const [currentThread, setCurrentThread] = useState<string | undefined>(
+    undefined
+  )
   const { threadId } = useParams<{ threadId: string[] }>() // Get current route params
 
   const addNewThread = () => {
     // Function to handle new thread addition
-    console.log("Adding new thread", threadId)
+    router.push("/player/new")
   }
 
   const truncateId = (id: string) => {
@@ -32,8 +37,12 @@ export default function Threads() {
   }
 
   useEffect(() => {
-    console.log(threads[0], threadId[0])
-  }, [threads])
+    if (threads && threads.length > 0) {
+      const currentThread = threads.find((thread) => thread === threadId?.[0])
+      setCurrentThread(currentThread)
+    }
+    console.log({ threadId, threads })
+  }, [threads, threadId])
 
   return (
     <Card>
@@ -41,15 +50,17 @@ export default function Threads() {
         <CardTitle>Threads</CardTitle>
         <CardDescription>This is the Threads component.</CardDescription>
       </CardHeader>
-      <CardContent>
-        <Button onClick={addNewThread}>Add New Thread</Button>{" "}
-        {/* Add New Thread button */}
+      <CardContent className="flex flex-col gap-2">
+        <Button variant="outline" onClick={addNewThread} className="w-full">
+          <PlusCircle className="mr-2 h-4 w-4" /> New thread
+        </Button>
+
         {threads?.map((thread) => (
           <Button
-            variant={threadId === thread ? "secondary" : "ghost"} // Conditional variant
+            variant={currentThread === thread ? "secondary" : "ghost"} // Conditional variant
             asChild
             key={thread}
-            className={`w-full justify-start ${threadId === thread ? "font-bold" : ""}`} // Conditional bold style
+            className={`w-full justify-start ${currentThread === thread ? "font-bold" : ""}`} // Conditional bold style
           >
             <Link href={`/player/${thread.replace(/"/g, "")}`}>
               {truncateId(thread.replace(/"/g, ""))}
