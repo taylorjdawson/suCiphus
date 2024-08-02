@@ -71,7 +71,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
       <head />
       <body
         className={cn(
-          "min-h-screen bg-background antialiased",
+          "min-h-screen bg-neutral-950 antialiased",
           inter.className
         )}
       >

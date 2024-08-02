@@ -10,12 +10,7 @@ import {
   SuaveWallet,
   type TransactionRequestSuave,
 } from "@flashbots/suave-viem/chains/utils"
-import {
-  suciphus as suciphusDeployment,
-  weth as wethDeployment,
-} from "@repo/suciphus-suapp"
-import suciphus from "@repo/suciphus-suapp/out/Suciphus.sol/Suciphus.json"
-import weth9 from "@repo/suciphus-suapp/out/WETH9.sol/WETH9.json"
+import { suciphus, weth } from "@repo/suciphus-suapp"
 
 /* devnet: */
 const KETTLE_ADDRESS = "0xB5fEAfbDD752ad52Afb7e1bD2E40432A485bBB7F"
@@ -73,7 +68,7 @@ const defaultRequest = {
   kettleAddress: KETTLE_ADDRESS,
   gas: 30n * 1000n * 1000n,
   type: "0x43",
-  to: suciphusDeployment.address,
+  to: suciphus.address,
 }
 
 const suciphusConfRequest = ({
@@ -129,14 +124,14 @@ export const mintTokens = async (params: MintTokensParams) => {
 
   const tx: TransactionRequestSuave = {
     data: encodeFunctionData({
-      abi: weth9.abi,
+      abi: weth.abi,
       functionName: "depositAndApprove",
-      args: [suciphusDeployment.address],
+      args: [suciphus.address],
     }),
     nonce,
     value,
     type: "0x0",
-    to: wethDeployment.address,
+    to: weth.address,
     gas: 150n * 1000n,
   }
   console.log({ tx })

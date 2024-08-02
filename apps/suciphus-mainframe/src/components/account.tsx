@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useWallet } from "@/components/wallet-provider"
 
+import AddCredits from "./add-credits"
 import { ConnectWallet } from "./connect-wallet"
 import { useSuaveWallet } from "./suave-provider"
 import { Button } from "./ui/button"

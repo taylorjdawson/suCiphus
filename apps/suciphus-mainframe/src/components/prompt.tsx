@@ -3,42 +3,16 @@
 import * as React from "react"
 import { KeyboardEvent, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import {
-  Address,
-  CustomTransport,
-  decodeEventLog,
-  encodeFunctionData,
-  formatEther,
-  Hash,
-  Hex,
-  hexToBigInt,
-  hexToString,
-  HttpTransport,
-  parseEther,
-} from "@flashbots/suave-viem"
-import suciphus from "@repo/suciphus-suapp/out/Suciphus.sol/Suciphus.json"
-import weth from "@repo/suciphus-suapp/out/WETH9.sol/WETH9.json"
-import {
-  suciphus as suciphusDeployment,
-  weth as wethDeployment,
-} from "@repo/suciphus-suapp/src/suciphus"
-import { Loader } from "lucide-react"
-import { MDXRemote } from "next-mdx-remote/rsc"
-import TextareaAutosize from "react-textarea-autosize"
-// import { Message } from "openai/resources/beta/threads/messages.mjs"
+import { decodeEventLog, Hash } from "@flashbots/suave-viem"
+import { suciphus, weth } from "@repo/suciphus-suapp/src/suciphus"
+import { Gem, HandCoins, Loader, Wallet } from "lucide-react"
 import { useAccount } from "wagmi"
 
 import { getMessages, Message } from "@/lib/openai"
-import {
-  checkSubmission,
-  mintTokens,
-  readMessages,
-  submitPrompt,
-} from "@/lib/suciphus"
+import { checkSubmission, submitPrompt } from "@/lib/suciphus"
 import { removeQuotes } from "@/lib/utils"
 
 import AddCredits from "./add-credits"
-import AddCreditsDialog from "./add-credits-dialog"
 import { MessageCard } from "./message" // Import the new Message component
 import { useSuaveWallet } from "./suave-provider"
 import { Button } from "./ui/button"
@@ -46,14 +20,10 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "./ui/card"
-import { Input } from "./ui/input"
-import { NakedInput } from "./ui/input.naked"
 import { ScrollArea } from "./ui/scroll-area"
-import { Textarea } from "./ui/textarea"
 import { NakedTextarea } from "./ui/textarea.naked"
 
 const ATTEMPTS_PER_ETH = 1000n
@@ -329,23 +299,6 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
     }
   }
 
-  // useEffect(() => {
-  //   messages.toReversed().map((message, idx) => {
-  //     console.log({ message })
-  //     console.log({ address })
-  //     console.log(
-  //       "has address",
-  //       message.content.toLowerCase().includes(address?.toLowerCase()),
-  //       { message }
-  //     )
-  //     console.log(
-  //       message.role === "assistant" &&
-  //         !!address &&
-  //         message.content.toLowerCase().includes(address.toLowerCase())
-  //     )
-  //   })
-  // }, [messages])
-
   return (
     <div className="flex h-full w-full flex-col justify-end">
       <div className="flex flex-col justify-end gap-4">
@@ -377,7 +330,53 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
                 ))
             ) : (
               <div className="flex h-full w-full flex-col items-center justify-start gap-4">
-                <div className="text-sm font-medium text-muted-foreground"></div>
+                <h1 className="w-max scroll-m-20 bg-gradient-to-r from-fuchsia-700  to-indigo-700 bg-clip-text text-4xl font-extrabold tracking-tight text-transparent blur-[1px] lg:text-5xl ">
+                  Suciphus
+                </h1>
+                <p className="bg-gradient-to-l from-neutral-300 to-neutral-500 bg-clip-text px-2 text-xl font-medium text-transparent">
+                  Think you're smarter than AI?
+                </p>
+                <Card className="mt-20  w-9/12 bg-slate-900/80 shadow-2xl">
+                  <CardHeader className="text-center">
+                    <CardTitle className="text-xl">
+                      Enter your prompt to get started
+                    </CardTitle>
+                    <CardDescription>
+                      You can also use the command palette to enter your prompt
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex justify-between gap-8">
+                    <div className="flex w-full flex-col items-center gap-2">
+                      <Wallet className="h-8 w-8" />
+                      <p className="scroll-m-20 text-xl font-semibold tracking-tight text-primary/90">
+                        Connect
+                      </p>
+                      <p className="scroll-m-20 text-center text-sm font-semibold tracking-tight text-muted-foreground">
+                        Connect your wallet
+                      </p>
+                    </div>
+
+                    <div className="flex w-full flex-col items-center gap-2">
+                      <Gem className="h-8 w-8" />
+                      <p className="scroll-m-20 text-xl font-semibold tracking-tight text-primary/90">
+                        Fund
+                      </p>
+                      <p className="scroll-m-20 text-center text-sm font-semibold tracking-tight text-muted-foreground">
+                        Buy credits to submit prompts
+                      </p>
+                    </div>
+
+                    <div className="flex w-full flex-col items-center gap-2">
+                      <HandCoins className="h-8 w-8" />
+                      <p className="scroll-m-20 text-xl font-semibold tracking-tight text-primary/90">
+                        Earn
+                      </p>
+                      <p className="scroll-m-20 text-center text-sm font-semibold tracking-tight text-muted-foreground">
+                        Earn rewards by submitting prompts
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
             )}
             <div ref={messagesEndRef} />{" "}
@@ -397,14 +396,14 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
               to play.
             </div>
           )}
-          <Card className="flex min-h-16 w-full items-center justify-center p-4">
+          <Card className="flex min-h-16 w-full items-center justify-center bg-black/20 p-4 backdrop-blur-lg">
             <NakedTextarea
               disabled={!suaveWallet || creditBalance === 0n}
               placeholder="Enter your prompt"
               value={inputValue}
               onChange={handleInputChange}
               onKeyDown={handleKeyPress}
-              className="w-full resize-none"
+              className="w-full resize-none bg-transparent"
             />
           </Card>
         </div>

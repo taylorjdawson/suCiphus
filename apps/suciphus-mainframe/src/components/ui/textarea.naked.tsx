@@ -11,7 +11,7 @@ const NakedTextarea = React.forwardRef<HTMLTextAreaElement, NakedTextareaProps>(
     return (
       <TextareaAutosize
         className={cn(
-          "w-full rounded-md bg-background p-0 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50",
+          "w-full rounded-md p-0 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50",
           className
         )}
         ref={ref}
