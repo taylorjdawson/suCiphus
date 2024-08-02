@@ -49,7 +49,9 @@ contract SuciphusTest is Test, SuaveEnabled {
 
         vm.startPrank(testPlayer);
         ctx.setConfidentialInputs(
-            abi.encode(Suciphus.Prompt({prompt: "", threadId: threadId}))
+            abi.encode(
+                Suciphus.Prompt({prompt: "", threadId: threadId, runId: ""})
+            )
         );
         suciphus.checkSubmission();
         vm.stopPrank();

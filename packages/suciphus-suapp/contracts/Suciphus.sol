@@ -299,12 +299,15 @@ contract Suciphus is Suapp, WithUtils {
 
         Assistant assistant = getAssistant();
 
-        string memory lastMessage = assistant.getMessages(
+        string[] memory lastMessage = assistant.getMessages(
             prompt.threadId,
             prompt.runId,
-            1
+            "1"
         );
-        string memory lowerLastMessage = toLower(lastMessage);
+        // Ensure that the lastMessage array is not empty
+        require(lastMessage.length > 0, "No messages to process");
+        // Convert the first message in the array to lowercase
+        string memory lowerLastMessage = toLower(lastMessage[0]);
         strings.slice memory lastMessageSlice = lowerLastMessage.toSlice();
         bool containsPlayerAddress = lastMessageSlice.contains(
             addressToString(msg.sender).toSlice()
@@ -312,7 +315,6 @@ contract Suciphus is Suapp, WithUtils {
 
         // @todo consider the event where the prompt is succesful but the contract reverts
 
-        // return containsPlayerAddress;
         return
             abi.encodeWithSelector(
                 this.onCheckSubmission.selector,

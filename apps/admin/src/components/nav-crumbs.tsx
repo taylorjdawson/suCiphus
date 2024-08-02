@@ -27,9 +27,9 @@ interface Crumb {
 }
 
 const truncateId = (id: string) => {
-  const { prefix, suffix } =
-    /^(?:thread|run|msg)_(?<prefix>.{4}).*(?<suffix>.{4})$/.exec(id)?.groups ??
-    {}
+  const match = /^(?:thread|run|msg)_(.{4}).*(.{4})$/.exec(id)
+  const prefix = match ? match[1] : undefined
+  const suffix = match ? match[2] : undefined
   return prefix && suffix ? `${prefix}•••${suffix}` : id
 }
 

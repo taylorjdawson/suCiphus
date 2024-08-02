@@ -71,11 +71,10 @@ contract Assistant is WithUtils {
                 '"}'
             );
 
-            bytes memory response = Suave.doHTTPRequest(request);
-            // @todo check response
-            string memory runId = createRun(player, threadId);
-            return (runId, threadId);
+            Suave.doHTTPRequest(request);
+            runId = createRun(player, threadId);
         }
+        return (runId, threadId);
     }
 
     function createRun(
