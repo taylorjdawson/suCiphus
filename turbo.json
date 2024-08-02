@@ -9,12 +9,11 @@
     },
     "admin#build": {
       "dependsOn": ["^build"],
-      "env": [
-        "SUPABASE_URL",
-        "SUPABASE_SERVICE_KEY",
-        "NEXT_PUBLIC_APP_URL",
-        "OPENAI_API_KEY"
-      ]
+      "env": ["SUPABASE_URL", "SUPABASE_SERVICE_KEY", "OPENAI_API_KEY"]
+    },
+    "suciphus#build": {
+      "dependsOn": ["^build"],
+      "env": ["OPENAI_API_KEY"]
     },
     "lint": {
       "dependsOn": ["^lint"]
