@@ -4,11 +4,8 @@ import React, { createContext, useContext, useEffect, useState } from "react"
 import {
   custom,
   CustomTransport,
-  encodeFunctionData,
-  hexToBigInt,
   http,
   HttpTransport,
-  parseEther,
 } from "@flashbots/suave-viem"
 import {
   getSuaveProvider,
@@ -19,7 +16,7 @@ import {
 import { suciphus, weth } from "@repo/suciphus-suapp"
 import { useAccount } from "wagmi"
 
-import { suaveLocal } from "@/lib/chains/suave-local"
+import { suaveChain, suaveLocal } from "@/lib/suave"
 import { mintTokens } from "@/lib/suciphus"
 
 const PRICE_PER_CREDIT = 10000000000000000n
@@ -39,7 +36,7 @@ const SuaveWalletContext = createContext<SuaveWalletContextType>({})
 export const SuaveWalletProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const { address } = useAccount()
+  const { address, chain } = useAccount()
   const [suaveWallet, setSuaveWallet] = useState<SuaveWallet<CustomTransport>>()
   const [publicClient, setPublicClient] =
     useState<SuaveProvider<HttpTransport>>()
@@ -48,21 +45,27 @@ export const SuaveWalletProvider: React.FC<{ children: React.ReactNode }> = ({
   const [threads, setThreads] = useState<string[]>([])
 
   useEffect(() => {
-    if (address) {
+    if (address && chain) {
       const eth = window.ethereum
       if (eth) {
+        console.log(chain.rpcUrls.default.http[0])
         const suaveWallet = getSuaveWallet({
           transport: custom(eth),
           jsonRpcAccount: address,
+          // @ts-ignore @todo remove hardcode chain - set chain only in development mode
+          chain:
+            process.env.NODE_ENV === "development" ? suaveLocal : undefined,
         })
+        console.log({ chain, suaveChain })
+        // @ts-ignore
         setSuaveWallet(suaveWallet)
         const publicClient = getSuaveProvider(
-          http(suaveLocal.rpcUrls.default.http[0])
+          http(chain.rpcUrls.default.http[0])
         )
         setPublicClient(publicClient)
       }
     }
-  }, [address])
+  }, [address, chain])
 
   useEffect(() => {
     if (publicClient && address) {
@@ -127,7 +130,7 @@ export const SuaveWalletProvider: React.FC<{ children: React.ReactNode }> = ({
       throw new Error("Wallet or nonce not initialized")
     }
     const value = PRICE_PER_CREDIT * credits
-    console.log("purchaseCredits", { nonce })
+
     await mintTokens({
       suaveWallet,
       value,

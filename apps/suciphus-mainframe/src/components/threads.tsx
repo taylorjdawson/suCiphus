@@ -48,7 +48,7 @@ export default function Threads() {
     <Card>
       <CardHeader>
         <CardTitle>Threads</CardTitle>
-        <CardDescription>This is the Threads component.</CardDescription>
+        {/* <CardDescription>This is the Threads component.</CardDescription> */}
       </CardHeader>
       <CardContent className="flex flex-col gap-2">
         <Button variant="outline" onClick={addNewThread} className="w-full">

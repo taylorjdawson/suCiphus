@@ -1,8 +1,8 @@
 "use client"
 
 import { usePathname, useRouter } from "next/navigation"
-import { Copy, Gem, HandCoins, LogOut } from "lucide-react"
-import { useAccount, useDisconnect } from "wagmi"
+import { AlertTriangle, Copy, Gem, HandCoins, LogOut } from "lucide-react"
+import { useAccount, useChainId, useDisconnect, useSwitchChain } from "wagmi"
 
 import {
   DropdownMenu,
@@ -36,24 +36,11 @@ export default function Account() {
 
   return (
     <div className="flex items-center gap-4">
-      <div className="">
-        <Card className="flex h-full items-center space-x-2 p-2">
-          <Gem className="h-4 w-4" />
-          <span className="text-center">{creditBalance?.toString() ?? 0}</span>
-        </Card>
-        {/* {creditBalance === 0n && (
-          <Button
-            className="h-full"
-            size="sm"
-            variant="ghost"
-            onClick={() => {
-              console.log("Add Credits")
-            }}
-          >
-            Add Credits
-          </Button>
-        )} */}
-      </div>
+      <Card className="flex h-full items-center space-x-2 p-2">
+        <Gem className="h-4 w-4" />
+        <span className="text-center">{creditBalance?.toString() ?? 0}</span>
+      </Card>
+
       <DropdownMenu>
         <DropdownMenuTrigger>
           <Card className="w-min cursor-pointer rounded-lg p-2">
@@ -65,7 +52,10 @@ export default function Account() {
             0x1234567890abcdef1234567890abcdef12345678
           </DropdownMenuLabel>
           <DropdownMenuSeparator /> */}
-          <DropdownMenuItem className="cursor-pointer">
+          <DropdownMenuItem
+            className="cursor-pointer"
+            onClick={() => navigator.clipboard.writeText(address ?? "")}
+          >
             <Copy className="mr-2 h-4 w-4" />
             <span>Copy Address</span>
           </DropdownMenuItem>

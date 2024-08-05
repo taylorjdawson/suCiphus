@@ -3,23 +3,23 @@ import TextareaAutosize from "react-textarea-autosize"
 
 import { cn } from "@/lib/utils"
 
-export interface NakedTextareaProps
+export interface NakedTextAreaProps
   extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {}
 
-const NakedTextarea = React.forwardRef<HTMLTextAreaElement, NakedTextareaProps>(
+const NakedTextArea = React.forwardRef<HTMLTextAreaElement, NakedTextAreaProps>(
   ({ className, style, ...props }, ref) => {
     return (
       <TextareaAutosize
+        ref={ref}
         className={cn(
           "w-full rounded-md p-0 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50",
           className
         )}
-        ref={ref}
         {...props}
       />
     )
   }
 )
-NakedTextarea.displayName = "NakedTextarea"
+NakedTextArea.displayName = "NakedTextArea"
 
-export { NakedTextarea }
+export { NakedTextArea }

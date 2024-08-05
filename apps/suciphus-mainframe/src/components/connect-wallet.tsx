@@ -1,10 +1,8 @@
 "use client"
 
-import { useEffect } from "react"
-import { usePathname, useRouter } from "next/navigation"
 import { useChainId, useConnect } from "wagmi"
 
-import { suaveLocal } from "@/lib/wagmi"
+import { suaveChain, suaveLocal } from "@/lib/suave"
 
 import { Button } from "./ui/button"
 import { useWallet } from "./wallet-provider"
@@ -27,6 +25,7 @@ export const ConnectWallet = () => {
   return (
     <Button
       onClick={() => {
+        // @todo remove hardcode chain
         connect({ connector, chainId: suaveLocal.id })
       }}
     >

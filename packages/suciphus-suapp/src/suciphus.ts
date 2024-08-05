@@ -2,7 +2,7 @@
 import { Address } from "viem"
 
 export const suciphus = {
-  address: "0x334f760508C93553e4Ff9374b1Cc2743f63A4A5a" as Address,
+  address: "0x8f21Fdd6B4f4CacD33151777A46c122797c8BF17" as Address,
   abi: [
   {
     "type": "constructor",
@@ -575,7 +575,7 @@ export const suciphus = {
 ]
 }
 export const weth = {
-  address: "0x7433E46137EfbE556574c0d3B07560ad6eDe823A" as Address,
+  address: "0xd594760B2A36467ec7F0267382564772D7b0b73c" as Address,
   abi: [
   {
     "type": "fallback",

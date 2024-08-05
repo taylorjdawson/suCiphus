@@ -1,16 +1,7 @@
 "use client"
 
 import React from "react"
-import { parseEther } from "@flashbots/suave-viem/utils"
 import { useAccount, useBalance } from "wagmi"
-
-import {
-  checkSubmission,
-  mintTokens,
-  readMessages,
-  submitPrompt,
-} from "@/lib/suciphus"
-import { suaveLocal } from "@/lib/wagmi"
 
 import AddCreditsDialog from "./add-credits-dialog"
 import { useSuaveWallet } from "./suave-provider"

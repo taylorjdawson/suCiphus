@@ -1,34 +1,25 @@
-// import { getDefaultConfig } from "@rainbow-me/rainbowkit"
-import { defineChain } from "viem"
 import { createConfig, http } from "wagmi"
-import {
-  arbitrum,
-  base,
-  mainnet,
-  optimism,
-  polygon,
-  sepolia,
-} from "wagmi/chains"
-import { injected, metaMask, safe, walletConnect } from "wagmi/connectors"
+import { injected, metaMask } from "wagmi/connectors"
 
-export const suaveLocal = defineChain({
-  id: 16813125,
-  name: "Suave Local",
-  nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
-  rpcUrls: {
-    default: { http: ["http://localhost:8545"] },
-  },
-  testnet: true,
-})
+import { suaveChain, suaveLocal, suaveToliman } from "./suave"
+
+// export const config = createConfig({
+//   ssr: true,
+//   //@ts-ignore
+//   chains: [suaveLocal],
+//   connectors: [injected(), metaMask({ dappMetadata: { name: "Suciphus" } })],
+//   transports: {
+//     [suaveLocal.id]: http(),
+//   },
+// })
 
 export const config = createConfig({
   ssr: true,
-  chains: [mainnet, optimism, base, suaveLocal],
+  //@ts-ignore
+  chains: [suaveToliman, suaveLocal],
   connectors: [injected(), metaMask({ dappMetadata: { name: "Suciphus" } })],
   transports: {
-    [mainnet.id]: http(),
-    [optimism.id]: http(),
-    [base.id]: http(),
+    [suaveToliman.id]: http(suaveToliman.rpcUrls.default.http[0]),
     [suaveLocal.id]: http(),
   },
 })

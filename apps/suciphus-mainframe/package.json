@@ -11,7 +11,7 @@
     "format:check": "pnpm prettier ./src --check"
   },
   "dependencies": {
-    "@flashbots/suave-viem": "0.0.0-main.20240717T141236",
+    "@flashbots/suave-viem": "0.0.0-main.20240731T114045",
     "@radix-ui/react-dialog": "^1.1.1",
     "@radix-ui/react-dropdown-menu": "^2.0.6",
     "@radix-ui/react-label": "^2.1.0",

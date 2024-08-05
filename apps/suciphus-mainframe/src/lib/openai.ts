@@ -30,7 +30,6 @@ export const getMessages = async (
       : undefined
   )
 
-  console.log({ threadMessages: threadMessages })
   // Transform the data to only include specified fields
   let filteredMessages = threadMessages.data.map((message) => ({
     id: message.id,
@@ -42,7 +41,7 @@ export const getMessages = async (
     runId: message.run_id || null,
     threadId: message.thread_id || null,
   }))
-  // console.log({ filteredMessages })
+
   filteredMessages = filteredMessages.filter(
     (message) => message.content.trim() !== ""
   )

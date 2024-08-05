@@ -5,18 +5,20 @@ import {
   type Hex,
 } from "@flashbots/suave-viem"
 import {
-  parseTransactionSuave,
-  SuaveProvider,
   SuaveWallet,
   type TransactionRequestSuave,
 } from "@flashbots/suave-viem/chains/utils"
 import { suciphus, weth } from "@repo/suciphus-suapp"
 
-/* devnet: */
-const KETTLE_ADDRESS = "0xB5fEAfbDD752ad52Afb7e1bD2E40432A485bBB7F"
-/* rigil:
-const KETTLE_ADDRESS = "0x03493869959C866713C33669cA118E774A30A0E5"
-*/
+import { suaveLocal } from "./suave"
+
+const KETTLE_ADDRESS_TOLIMAN = "0xF579DE142D98F8379C54105ac944fe133B7A17FE"
+const KETTLE_ADDRESS_LOCAL = "0xB5fEAfbDD752ad52Afb7e1bD2E40432A485bBB7F"
+
+const KETTLE_ADDRESS =
+  process.env.NODE_ENV === "production"
+    ? KETTLE_ADDRESS_TOLIMAN
+    : KETTLE_ADDRESS_LOCAL
 
 type SubmitPromptParams = {
   prompt?: string
@@ -82,6 +84,7 @@ const suciphusConfRequest = ({
   args?: any[]
   nonce?: number
 }) => {
+  console.log({ defaultRequest })
   return {
     ...defaultRequest,
     data: encodeFunctionData({
@@ -130,11 +133,13 @@ export const mintTokens = async (params: MintTokensParams) => {
     }),
     nonce,
     value,
-    type: "0x0",
+    // type: "0x0",
     to: weth.address,
     gas: 150n * 1000n,
+    // kettleAddress: KETTLE_ADDRESS,
   }
   console.log({ tx })
+  console.log("suaveWallet.chain", await suaveWallet.getChainId())
   return await suaveWallet.sendTransaction(tx)
 }
 

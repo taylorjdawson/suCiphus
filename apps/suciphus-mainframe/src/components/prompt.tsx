@@ -5,12 +5,14 @@ import { KeyboardEvent, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { decodeEventLog, Hash } from "@flashbots/suave-viem"
 import { suciphus, weth } from "@repo/suciphus-suapp/src/suciphus"
-import { Gem, HandCoins, Loader, Wallet } from "lucide-react"
-import { useAccount } from "wagmi"
+import { AlertTriangle, Gem, HandCoins, Loader, Wallet } from "lucide-react"
+import { useAccount, useSwitchChain } from "wagmi"
 
 import { getMessages, Message } from "@/lib/openai"
+import { suaveChain } from "@/lib/suave"
 import { checkSubmission, submitPrompt } from "@/lib/suciphus"
 import { removeQuotes } from "@/lib/utils"
+import { NakedTextArea } from "@/components/ui/textarea.naked"
 
 import AddCredits from "./add-credits"
 import { MessageCard } from "./message" // Import the new Message component
@@ -24,7 +26,6 @@ import {
   CardTitle,
 } from "./ui/card"
 import { ScrollArea } from "./ui/scroll-area"
-import { NakedTextarea } from "./ui/textarea.naked"
 
 const ATTEMPTS_PER_ETH = 1000n
 
@@ -37,7 +38,9 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
   const router = useRouter()
   const { suaveWallet, publicClient, creditBalance, threads, refreshBalance } =
     useSuaveWallet()
-  const { address } = useAccount()
+  const { address, chainId } = useAccount()
+  const { switchChain } = useSwitchChain()
+
   const [inputValue, setInputValue] = useState("")
   const [prompts, setPrompts] = useState<string[]>([])
   const [messages, setMessages] = useState<Message[]>([])
@@ -76,7 +79,9 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
   useEffect(() => {
     if (lastRun && lastRun.runId && lastRun.threadId) {
       pollGetLastMessage(lastRun.threadId, lastRun.runId).then((message) => {
+        console.log("pollGetLastMessage complete", { message })
         if (message) {
+          console.log("setMessages", { message })
           setMessages([message, ...messages])
         }
       })
@@ -124,8 +129,10 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
                   const decodedThreadId = removeQuotes(
                     decoded.args.threadId as string
                   )
-                  // setThreadId(decodedThreadId)
-                  console.log("runId", decodedRunId)
+
+                  // Update the URL without causing a page refresh
+                  router.replace(`/player/${decodedThreadId}`)
+
                   setLastRun({
                     runId: decodedRunId,
                     threadId: decodedThreadId,
@@ -194,6 +201,7 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
   }
 
   const handleInputChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+    console.log(event.target.value)
     setInputValue(event.target.value)
   }
 
@@ -227,24 +235,23 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
             },
             ...messages,
           ])
-          setInputValue("") // Clear the input after adding
+          setInputValue("")
 
           if (address && suaveWallet && publicClient) {
             console.log(address)
 
             // Compute nonce for the transaction
             const nonce = await getUserNonce()
-            console.log(`sending prompt with threadId ${threadId}`)
             const escapedInputValue = JSON.stringify(inputValue).slice(1, -1)
-            console.log(escapedInputValue)
+
             const hash = await submitPrompt({
-              prompt: escapedInputValue, // Escape inputValue for JSON
+              prompt: escapedInputValue,
               threadId: threadId && threadId !== "new" ? threadId : "",
               suaveWallet,
-              nonce, // Pass the computed nonce
+              nonce,
             }).catch((error) => {
               console.error("error submitting prompt", error)
-              setMessages(messages) // Update the state with the modified array
+              setMessages(messages)
               return "0x" as const
             })
 
@@ -253,8 +260,8 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
               setMessages((currentMessages) => [
                 {
                   ...currentMessages[0],
-                  status: "complete", // Update the status of the first message
-                  runId: hash, // Optionally, you can also set the runId to the transaction hash
+                  status: "complete",
+                  runId: hash,
                 },
                 ...currentMessages.slice(1),
               ])
@@ -301,8 +308,8 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
 
   return (
     <div className="flex h-full w-full flex-col justify-end">
-      <div className="flex flex-col justify-end gap-4">
-        <ScrollArea className=" h-[calc(100vh-20rem)] p-8">
+      <div className="flex flex-col justify-end gap-4 ">
+        <ScrollArea className="h-[calc(100vh-20rem)]  p-8 ">
           <div className="flex flex-col gap-6">
             {fetchingMessages ? (
               <div className="flex h-full w-full flex-col items-center justify-start gap-4">
@@ -379,25 +386,39 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
                 </Card>
               </div>
             )}
-            <div ref={messagesEndRef} />{" "}
-            {/* Invisible element at the end of the messages */}
+            <div ref={messagesEndRef} />
           </div>
         </ScrollArea>
 
         <div className="flex flex-col items-center gap-2">
-          {creditBalance === 0n && (
+          {chainId !== suaveChain.id ? (
             <div className="mx-2 text-xs text-muted-foreground">
-              Insufficient credits.{" "}
-              <AddCredits>
-                <Button className="h-min w-min p-0 text-xs" variant="link">
-                  Add more
-                </Button>
-              </AddCredits>{" "}
+              Wrong chain please{" "}
+              <Button
+                onClick={() => switchChain({ chainId: suaveChain.id })}
+                className="h-min w-min p-0 text-xs"
+                variant="link"
+              >
+                switch
+              </Button>{" "}
+              to <span className="font-semibold ">{suaveChain.name}</span> chain
               to play.
             </div>
+          ) : (
+            creditBalance === 0n && (
+              <div className="mx-2 text-xs text-muted-foreground">
+                Insufficient credits.{" "}
+                <AddCredits>
+                  <Button className="h-min w-min p-0 text-xs" variant="link">
+                    Add more
+                  </Button>
+                </AddCredits>{" "}
+                to play.
+              </div>
+            )
           )}
           <Card className="flex min-h-16 w-full items-center justify-center bg-black/20 p-4 backdrop-blur-lg">
-            <NakedTextarea
+            <NakedTextArea
               disabled={!suaveWallet || creditBalance === 0n}
               placeholder="Enter your prompt"
               value={inputValue}

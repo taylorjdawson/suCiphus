@@ -7,11 +7,12 @@
   "main": "dist/suciphus.js",
   "types": "dist/suciphus.d.ts",
   "scripts": {
-    "dev": "chokidar 'contracts/**/*.sol' -c 'pnpm run rebuild-deploy'",
+    "dev": "DEPLOY_ENV=dev chokidar 'contracts/**/*.sol' -c 'pnpm run build-deploy'",
     "build": "tsc",
     "contracts:build": "forge build",
     "contracts:deploy": "./deploy.sh",
-    "rebuild-deploy": "pnpm run contracts:build && pnpm run contracts:deploy && pnpm build"
+    "build-deploy": "pnpm run contracts:build && pnpm run contracts:deploy && pnpm build",
+    "deploy:prod": "DEPLOY_ENV=prod pnpm run build-deploy"
   },
   "dependencies": {
     "viem": "^2.9.25"
