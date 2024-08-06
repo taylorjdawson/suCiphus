@@ -154,7 +154,8 @@ contract Assistant is WithUtils {
         Suave.HttpRequest memory request;
         request.method = "POST";
         // @todo: change to production url
-        request.url = "http://localhost:3000/api/thread";
+        request
+            .url = "https://suciphus-admin-k6odqi4ii-taylor-dawsons-projects.vercel.app/api/thread";
         request.headers = new string[](1);
         request.headers[0] = "Content-Type: application/json";
         request.body = abi.encodePacked(

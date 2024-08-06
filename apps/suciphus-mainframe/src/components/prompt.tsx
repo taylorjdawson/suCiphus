@@ -79,9 +79,7 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
   useEffect(() => {
     if (lastRun && lastRun.runId && lastRun.threadId) {
       pollGetLastMessage(lastRun.threadId, lastRun.runId).then((message) => {
-        console.log("pollGetLastMessage complete", { message })
         if (message) {
-          console.log("setMessages", { message })
           setMessages([message, ...messages])
         }
       })
@@ -201,7 +199,6 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
   }
 
   const handleInputChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-    console.log(event.target.value)
     setInputValue(event.target.value)
   }
 
@@ -279,7 +276,6 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
   }
 
   useEffect(() => {
-    console.log({ pendingTxs })
     fetchPendingReceipts(pendingTxs)
   }, [pendingTxs])
 
@@ -289,7 +285,6 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
   }
 
   const doCheckSubmission = async (runId: string) => {
-    console.log({ threadId })
     if (suaveWallet && threadId) {
       const nonce = await getUserNonce()
       const txHash = await checkSubmission({

@@ -49,8 +49,15 @@ contract Suciphus is Suapp, WithUtils {
     // mapping of id(threadId) to the player address, to verify that the player is the one who submitted the original prompt
     mapping(bytes32 => address) public threadToPlayer;
 
-    // Mapping from player address to list of thread IDs
-    mapping(address => string[]) private playerToThreads;
+    struct Thread {
+        string id;
+        uint256 round;
+        bool success;
+        string runId;
+    }
+
+    // Mapping from player address to list of Thread structs
+    mapping(address => Thread[]) private playerToThreads;
 
     address private owner;
 
@@ -228,7 +235,9 @@ contract Suciphus is Suapp, WithUtils {
         if (threadToPlayer[id(threadId)] == address(0)) {
             threadToPlayer[id(threadId)] = player;
             // Add threadId to the list of threads for the player
-            playerToThreads[player].push(threadId);
+            playerToThreads[player].push(
+                Thread({id: threadId, round: round, success: false, runId: ""})
+            );
         }
     }
 
@@ -270,7 +279,8 @@ contract Suciphus is Suapp, WithUtils {
 
     function onCheckSubmission(
         bool containsPlayerAddress,
-        address player
+        address player,
+        string memory threadId
     ) public emitOffchainLogs {
         if (containsPlayerAddress) {
             uint256 balance = WETH.balanceOf(address(this));
@@ -280,7 +290,7 @@ contract Suciphus is Suapp, WithUtils {
             emit SuccessfulSubmission(msg.sender, amountToSend, round, season);
             WETH.transfer(player, amountToSend);
             // the round is autoclosed on succesful submission
-            nextRound();
+            closeRound(threadId, player);
         } else {
             emit NothingHappened();
         }
@@ -319,7 +329,8 @@ contract Suciphus is Suapp, WithUtils {
             abi.encodeWithSelector(
                 this.onCheckSubmission.selector,
                 containsPlayerAddress,
-                msg.sender
+                msg.sender,
+                prompt.threadId
             );
     }
 
@@ -329,10 +340,20 @@ contract Suciphus is Suapp, WithUtils {
         return round;
     }
 
-    // advances to the next round
-    // @todo call this function when checking a submission and it is sucessful
-    function nextRound() private {
-        // @todo need to send the winning thread to the ai to update the assistant
+    // closes current round and advances to the next round
+    function closeRound(string memory threadId, address player) private {
+        // Find the thread in the playerToThreads mapping
+        Thread[] storage threads = playerToThreads[player];
+        for (uint256 i = 0; i < threads.length; i++) {
+            if (
+                keccak256(abi.encodePacked(threads[i].id)) ==
+                keccak256(abi.encodePacked(threadId))
+            ) {
+                // Set the success property to true
+                threads[i].success = true;
+                break;
+            }
+        }
         round++;
         // Clear the thread to round mapping to free up storage
         // delete threadToRound;
@@ -340,7 +361,7 @@ contract Suciphus is Suapp, WithUtils {
 
     function getThreadIdsByPlayer(
         address player
-    ) public view returns (string[] memory) {
+    ) public view returns (Thread[] memory) {
         return playerToThreads[player];
     }
 }

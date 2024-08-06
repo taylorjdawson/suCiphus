@@ -21,13 +21,20 @@ import { mintTokens } from "@/lib/suciphus"
 
 const PRICE_PER_CREDIT = 10000000000000000n
 
+export interface Thread {
+  id: string
+  round: number
+  success: boolean
+  runId: string
+}
+
 interface SuaveWalletContextType {
   suaveWallet?: SuaveWallet<CustomTransport>
   publicClient?: SuaveProvider<HttpTransport>
   purchaseCredits?: (credits: bigint) => Promise<void>
   nonce?: number
   creditBalance?: bigint
-  threads?: string[]
+  threads?: Thread[]
   refreshBalance?: () => Promise<void>
 }
 
@@ -42,7 +49,7 @@ export const SuaveWalletProvider: React.FC<{ children: React.ReactNode }> = ({
     useState<SuaveProvider<HttpTransport>>()
   const [nonce, setNonce] = useState<number>()
   const [creditBalance, setCreditBalance] = useState<bigint>()
-  const [threads, setThreads] = useState<string[]>([])
+  const [threads, setThreads] = useState<Thread[]>([])
 
   useEffect(() => {
     if (address && chain) {
@@ -107,11 +114,15 @@ export const SuaveWalletProvider: React.FC<{ children: React.ReactNode }> = ({
         abi: suciphus.abi, // Replace with your contract's ABI
         functionName: "getThreadIdsByPlayer",
         args: [address],
-      })) as string[]
-      const threadIds = [
-        ...new Set(rawThreadIds.map((id) => id.replace(/"/g, ""))),
+      })) as Thread[]
+
+      const uniqueThreads = [
+        ...new Map(
+          rawThreadIds.map((thread) => [thread.id.replace(/['"]/g, ""), thread])
+        ).values(),
       ]
-      setThreads(threadIds)
+
+      setThreads(uniqueThreads)
     }
   }
 

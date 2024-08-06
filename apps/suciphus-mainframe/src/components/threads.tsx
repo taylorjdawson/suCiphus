@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import { PlusCircle } from "lucide-react"
 
-import { useSuaveWallet } from "./suave-provider"
+import { Thread, useSuaveWallet } from "./suave-provider"
 import { Button } from "./ui/button"
 import {
   Card,
@@ -19,7 +19,7 @@ import {
 export default function Threads() {
   const router = useRouter()
   const { threads } = useSuaveWallet()
-  const [currentThread, setCurrentThread] = useState<string | undefined>(
+  const [currentThread, setCurrentThread] = useState<Thread | undefined>(
     undefined
   )
   const { threadId } = useParams<{ threadId: string[] }>() // Get current route params
@@ -38,7 +38,9 @@ export default function Threads() {
 
   useEffect(() => {
     if (threads && threads.length > 0) {
-      const currentThread = threads.find((thread) => thread === threadId?.[0])
+      const currentThread = threads.find(
+        (thread) => thread.id.replace(/"/g, "") === threadId?.[0]
+      )
       setCurrentThread(currentThread)
     }
     console.log({ threadId, threads })
@@ -59,11 +61,11 @@ export default function Threads() {
           <Button
             variant={currentThread === thread ? "secondary" : "ghost"} // Conditional variant
             asChild
-            key={thread}
+            key={thread.id}
             className={`w-full justify-start ${currentThread === thread ? "font-bold" : ""}`} // Conditional bold style
           >
-            <Link href={`/player/${thread.replace(/"/g, "")}`}>
-              {truncateId(thread.replace(/"/g, ""))}
+            <Link href={`/player/${thread.id.replace(/"/g, "")}`}>
+              {truncateId(thread.id.replace(/"/g, ""))}
             </Link>
           </Button>
         ))}

@@ -2,7 +2,7 @@
 import { Address } from "viem"
 
 export const suciphus = {
-  address: "0x8f21Fdd6B4f4CacD33151777A46c122797c8BF17" as Address,
+  address: "0xb228e81488A77ef557d90fF1c9ad26Ff841f6C67" as Address,
   abi: [
   {
     "type": "constructor",
@@ -186,8 +186,30 @@ export const suciphus = {
     "outputs": [
       {
         "name": "",
-        "type": "string[]",
-        "internalType": "string[]"
+        "type": "tuple[]",
+        "internalType": "struct Suciphus.Thread[]",
+        "components": [
+          {
+            "name": "id",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "round",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "success",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "runId",
+            "type": "string",
+            "internalType": "string"
+          }
+        ]
       }
     ],
     "stateMutability": "view"
@@ -205,6 +227,11 @@ export const suciphus = {
         "name": "player",
         "type": "address",
         "internalType": "address"
+      },
+      {
+        "name": "threadId",
+        "type": "string",
+        "internalType": "string"
       }
     ],
     "outputs": [],
@@ -575,7 +602,7 @@ export const suciphus = {
 ]
 }
 export const weth = {
-  address: "0xd594760B2A36467ec7F0267382564772D7b0b73c" as Address,
+  address: "0x7D6DA32034574E0Db468282875e9c389008456f6" as Address,
   abi: [
   {
     "type": "fallback",
