@@ -26,7 +26,7 @@ import { encodeFunctionData, hexToBigInt } from "@flashbots/suave-viem/utils"
 import { weth } from "@repo/suciphus-suapp/src/suciphus"
 import { useAccount } from "wagmi"
 
-import { suaveLocal } from "@/lib/chains/suave-local"
+import { suaveLocal } from "@/lib/suave"
 
 interface WalletContextType {
   connectWallet: () => Promise<void>
