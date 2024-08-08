@@ -347,7 +347,7 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
       <div className="flex flex-col justify-end gap-4 ">
         <LayoutGroup>
           <AnimatePresence>
-            <ScrollArea className="h-[calc(100vh-20rem)]  p-8 ">
+            <ScrollArea className="h-[calc(100vh-14rem)] p-4 2xl:h-[calc(100vh-20rem)]  2xl:p-8 ">
               <div className="flex flex-col gap-6">
                 {fetchingMessages ? (
                   <>
