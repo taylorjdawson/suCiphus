@@ -131,7 +131,18 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
         setIsInitialLoad(false)
       }
     }
-  }, [messages])
+  }, [messages, currentThread])
+
+  useEffect(() => {
+    if (currentThread?.success) {
+      if (messagesEndRef.current) {
+        console.log("messagesEndRef.current")
+        messagesEndRef.current.scrollIntoView({
+          behavior: isInitialLoad ? "instant" : "smooth",
+        })
+      }
+    }
+  }, [currentThread])
 
   const findAndSetCurrentThread = (threadId: string) => {
     if (currentThread?.id !== threadId) {
@@ -277,9 +288,9 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
       console.log("pollGetLastMessage", { messages })
 
       if (messages.length === 0) {
-        if (attempt < 10) {
+        if (attempt < 15) {
           // Check if the attempt count is less than 3 (for a total of 4 tries)
-          await new Promise((resolve) => setTimeout(resolve, 800))
+          await new Promise((resolve) => setTimeout(resolve, 860))
           return pollGetLastMessage(threadId, runId, attempt + 1) // Recurse with incremented attempt counter
         } else {
           console.log("Max retries reached, stopping poll.")

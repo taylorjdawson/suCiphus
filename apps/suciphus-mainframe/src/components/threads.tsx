@@ -125,14 +125,12 @@ export default function Threads() {
             key={thread.id}
             className={`w-full cursor-pointer justify-start hover:bg-gradient-to-bl hover:from-fuchsia-900/40 hover:to-cyan-800/60 ${currentThread === thread ? "bg-gradient-to-bl from-fuchsia-900/70 to-cyan-800/90" : ""}`} // Conditional bold style
           >
-            <div className="flex flex-row items-center gap-2">
-              <Link
-                href={`/player/${thread.id.replace(/"/g, "")}`}
-                replace
-                prefetch
-              >
-                {truncateId(thread.id.replace(/"/g, ""))}
-              </Link>
+            <Link
+              className="flex flex-row items-center gap-2"
+              href={`/player/${thread.id.replace(/"/g, "")}`}
+              replace
+              prefetch
+            >
               {thread.success && (
                 <svg
                   width="22"
@@ -164,7 +162,8 @@ export default function Threads() {
                   </defs>
                 </svg>
               )}
-            </div>
+              {truncateId(thread.id.replace(/"/g, ""))}
+            </Link>
           </Button>
         ))}
         {/* <Select>
