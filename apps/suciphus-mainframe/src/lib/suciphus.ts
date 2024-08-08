@@ -212,9 +212,11 @@ export const getPlayerTransferLogs = async (
   const logs = await getTransferLogs(client)
 
   const creditsSpent = logs.filter(
+    // @ts-ignore
     (log) => log.args.src === playerAddress && log.args.dst === suciphus.address
   )
   const earnedCredits = logs.filter(
+    // @ts-ignore
     (log) => log.args.src === suciphus.address && log.args.dst === playerAddress
   )
 
