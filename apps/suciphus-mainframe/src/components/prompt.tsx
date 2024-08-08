@@ -475,7 +475,11 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
         </LayoutGroup>
 
         <div className="flex flex-col items-center gap-2">
-          {chainId !== suaveChain.id ? (
+          {!suaveWallet ? (
+            <div className="mx-2 text-xs text-muted-foreground">
+              Please connect your wallet to play.
+            </div>
+          ) : chainId !== suaveChain.id ? (
             <div className="mx-2 text-xs text-muted-foreground">
               Wrong chain please{" "}
               <Button
@@ -488,19 +492,17 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
               to <span className="font-semibold ">{suaveChain.name}</span> chain
               to play.
             </div>
-          ) : (
-            creditBalance === 0n && (
-              <div className="mx-2 text-xs text-muted-foreground">
-                Insufficient credits.{" "}
-                <AddCredits>
-                  <Button className="h-min w-min p-0 text-xs" variant="link">
-                    Add more
-                  </Button>
-                </AddCredits>{" "}
-                to play.
-              </div>
-            )
-          )}
+          ) : creditBalance === 0n ? (
+            <div className="mx-2 text-xs text-muted-foreground">
+              Insufficient credits.{" "}
+              <AddCredits>
+                <Button className="h-min w-min p-0 text-xs" variant="link">
+                  Add more
+                </Button>
+              </AddCredits>{" "}
+              to play.
+            </div>
+          ) : null}
 
           {threadId &&
           threadId !== "new" &&

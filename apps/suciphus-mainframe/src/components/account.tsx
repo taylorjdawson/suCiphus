@@ -41,7 +41,7 @@ export default function Account() {
           <span className="text-center font-medium">
             {balance?.value && balance.value > WHALE_BALANCE
               ? "🐳 🐳 🐳"
-              : formatEther(balance?.value ?? 0n)}
+              : Number(formatEther(balance?.value ?? 0n)).toFixed(2)}
           </span>
           <span className="text-xs font-bold text-muted-foreground">TETH</span>
         </div>
