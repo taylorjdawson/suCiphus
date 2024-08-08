@@ -311,8 +311,8 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
   }, [pendingTxs])
 
   const doCheckSubmission = async (runId: string) => {
-    if (suaveWallet && threadId && checkSubmission) {
-      const txHash = await checkSubmission(threadId, runId)
+    if (suaveWallet && currentThread?.id && checkSubmission) {
+      const txHash = await checkSubmission(currentThread?.id, runId)
       if (txHash !== "0x") {
         console.log({ txHash })
         setPendingTxs([...pendingTxs, txHash])
