@@ -18,7 +18,7 @@ import {
 } from "@flashbots/suave-viem/chains/utils"
 import { suciphus, weth } from "@repo/suciphus-suapp"
 
-import { suaveLocal } from "./suave"
+import { suciphusAddress, wethAddress } from "@/config/app"
 
 const KETTLE_ADDRESS_TOLIMAN = "0xF579DE142D98F8379C54105ac944fe133B7A17FE"
 const KETTLE_ADDRESS_LOCAL = "0xB5fEAfbDD752ad52Afb7e1bD2E40432A485bBB7F"
@@ -78,7 +78,7 @@ const defaultRequest = {
   kettleAddress: KETTLE_ADDRESS,
   gas: 30n * 1000n * 1000n,
   type: "0x43",
-  to: suciphus.address,
+  to: suciphusAddress,
 }
 
 const suciphusConfRequest = ({
@@ -137,12 +137,12 @@ export const mintTokens = async (params: MintTokensParams) => {
     data: encodeFunctionData({
       abi: weth.abi,
       functionName: "depositAndApprove",
-      args: [suciphus.address],
+      args: [suciphusAddress],
     }),
     nonce,
     value,
     // type: "0x0",
-    to: weth.address,
+    to: wethAddress,
     gas: 150n * 1000n,
     // kettleAddress: KETTLE_ADDRESS,
   }
@@ -174,7 +174,7 @@ const depositEventAbi = parseAbiItem(
 
 const getTransferLogs = async (client: SuaveProvider<HttpTransport>) => {
   return client.getContractEvents({
-    address: weth.address,
+    address: wethAddress,
     abi: weth.abi,
     eventName: "Transfer",
     fromBlock: 0n,
@@ -186,10 +186,10 @@ export const getCurrentPotValue = async (
   client: SuaveProvider<HttpTransport>
 ): Promise<bigint> => {
   const potValue = (await client.readContract({
-    address: weth.address,
+    address: wethAddress,
     abi: weth.abi,
     functionName: "balanceOf",
-    args: [suciphus.address],
+    args: [suciphusAddress],
   })) as bigint
   return potValue
 }
@@ -198,7 +198,7 @@ export const getPotValue = async (
   client: SuaveProvider<HttpTransport>
 ): Promise<bigint> => {
   const potValue = (await client.readContract({
-    address: suciphus.address,
+    address: suciphusAddress,
     abi: suciphus.abi,
     functionName: "getPotValue",
   })) as bigint
@@ -213,11 +213,11 @@ export const getPlayerTransferLogs = async (
 
   const creditsSpent = logs.filter(
     // @ts-ignore
-    (log) => log.args.src === playerAddress && log.args.dst === suciphus.address
+    (log) => log.args.src === playerAddress && log.args.dst === suciphusAddress
   )
   const earnedCredits = logs.filter(
     // @ts-ignore
-    (log) => log.args.src === suciphus.address && log.args.dst === playerAddress
+    (log) => log.args.src === suciphusAddress && log.args.dst === playerAddress
   )
 
   return { creditsSpent, earnedCredits }
@@ -229,7 +229,7 @@ export const getDepositLogs = async (
   client: SuaveProvider<HttpTransport>
 ) => {
   const logs = await client.getContractEvents({
-    address: weth.address,
+    address: wethAddress,
     abi: weth.abi,
     eventName: "Deposit",
     args: {
@@ -248,7 +248,7 @@ export const getWithdrawalLogs = async (
   client: SuaveProvider<HttpTransport>
 ) => {
   const logs = await client.getContractEvents({
-    address: weth.address,
+    address: wethAddress,
     abi: weth.abi,
     eventName: "Withdrawal",
     args: {

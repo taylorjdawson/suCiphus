@@ -1,9 +1,24 @@
 import { createEnv } from "@t3-oss/env-nextjs"
 import { z } from "zod"
 
+// Custom Zod schema for Ethereum address
+const addressSchema = z.string().refine(
+  (val) => {
+    return /^0x[a-fA-F0-9]{40}$/.test(val)
+  },
+  {
+    message:
+      "Invalid Ethereum address. Must start with '0x' and be 42 characters long.",
+  }
+)
+
 export const env = createEnv({
   client: {
     NEXT_PUBLIC_APP_URL: z.string().min(1),
+    NEXT_PUBLIC_SUICPHUS_ADDRESS_TOLIMAN: addressSchema,
+    NEXT_PUBLIC_WETH_ADDRESS_TOLIMAN: addressSchema,
+    NEXT_PUBLIC_SUICPHUS_ADDRESS_LOCAL: addressSchema,
+    NEXT_PUBLIC_WETH_ADDRESS_LOCAL: addressSchema,
   },
   server: {
     OPENAI_API_KEY: z.string().min(1),
@@ -11,5 +26,12 @@ export const env = createEnv({
   runtimeEnv: {
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+    NEXT_PUBLIC_SUICPHUS_ADDRESS_TOLIMAN:
+      process.env.NEXT_PUBLIC_SUICPHUS_ADDRESS_TOLIMAN,
+    NEXT_PUBLIC_WETH_ADDRESS_TOLIMAN:
+      process.env.NEXT_PUBLIC_WETH_ADDRESS_TOLIMAN,
+    NEXT_PUBLIC_SUICPHUS_ADDRESS_LOCAL:
+      process.env.NEXT_PUBLIC_SUICPHUS_ADDRESS_LOCAL,
+    NEXT_PUBLIC_WETH_ADDRESS_LOCAL: process.env.NEXT_PUBLIC_WETH_ADDRESS_LOCAL,
   },
 })

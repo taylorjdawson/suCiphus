@@ -26,6 +26,7 @@ import { encodeFunctionData, hexToBigInt } from "@flashbots/suave-viem/utils"
 import { weth } from "@repo/suciphus-suapp/src/suciphus"
 import { useAccount } from "wagmi"
 
+import { wethAddress } from "@/config/app"
 import { suaveLocal } from "@/lib/suave"
 
 interface WalletContextType {
@@ -142,7 +143,7 @@ export const WalletProvider = ({ children }: WalletProviderProps) => {
   const fetchCreditBalance = async () => {
     if (suaveWallet && publicClient) {
       const newBalance = await publicClient.call({
-        to: weth.address,
+        to: wethAddress,
         data: encodeFunctionData({
           functionName: "balanceOf",
           args: [suaveWallet.account.address],
