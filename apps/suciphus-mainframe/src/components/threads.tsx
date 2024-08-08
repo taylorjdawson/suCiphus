@@ -88,7 +88,7 @@ export default function Threads() {
         <Button variant="outline" onClick={addNewThread} className="w-full">
           <PlusCircle className="mr-2 h-4 w-4" /> New thread
         </Button>
-        <ScrollArea className="h-96 w-min">
+        <ScrollArea className="max-h-96 w-min">
           {threadsByRound.currentRound.map((thread) => (
             <Button
               variant="ghost" // Conditional variant
@@ -106,12 +106,13 @@ export default function Threads() {
             </Button>
           ))}
           {threadsByRound.previousRound.length > 0 ? (
-            <>
-              <h3 className="mt-4 text-center text-sm font-medium  text-muted-foreground">
+            <div className="mt-4 flex flex-col gap-2">
+              <Separator />
+              <h3 className="text-center text-sm font-medium  text-muted-foreground">
                 Previous rounds
               </h3>
               <Separator />
-            </>
+            </div>
           ) : null}
           {threadsByRound.previousRound.map((thread) => (
             <Button

@@ -5,6 +5,7 @@ import { motion, Variants } from "framer-motion"
 
 import { Message } from "@/lib/openai"
 
+import { useCurrentThread } from "./context/current-thread"
 import { MessageCard } from "./message"
 
 interface AnimatedMessagesProps {
@@ -29,6 +30,7 @@ const AnimatedMessages = ({
   checkSubmission,
 }: AnimatedMessagesProps) => {
   const reversedMessages = useMemo(() => messages.toReversed(), [messages])
+  const { currentThread } = useCurrentThread()
 
   return (
     <motion.div
@@ -51,7 +53,8 @@ const AnimatedMessages = ({
             shouldCheckSubmission={
               message.role === "assistant" &&
               !!address &&
-              message.content.toLowerCase().includes(address.toLowerCase())
+              message.content.toLowerCase().includes(address.toLowerCase()) &&
+              !currentThread?.success
             }
           />
         </motion.div>

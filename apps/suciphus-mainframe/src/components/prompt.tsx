@@ -72,10 +72,46 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
     const subscription: Subscription = promptSubmitted$.subscribe(
       (logs: any) => {
         console.log("promptSubmittedReceived logs:", logs)
+
+        const decodedRunId = removeQuotes(logs.args.runId as string)
+        const decodedThreadId = removeQuotes(logs.args.threadId as string)
+
+        // Update the URL without causing a page refresh
+        window.history.replaceState(
+          null,
+          "",
+          `${window.location.origin}/player/${decodedThreadId}`
+        )
+
+        // Check if the thread and run IDs already exist before updating
+        if (!threads?.some((thread) => thread.id === decodedThreadId)) {
+          updateThreads?.(decodedThreadId, decodedRunId)
+        }
+
+        setLastRun({
+          runId: decodedRunId,
+          threadId: decodedThreadId,
+        }) // Set the lastRunId state
+
+        if (!currentThread) {
+          setCurrentThread({
+            id: decodedThreadId,
+            runId: decodedRunId,
+            success: false,
+            round: gameRound || 0,
+          })
+        }
       }
     )
     return () => subscription.unsubscribe()
-  }, [promptSubmitted$])
+  }, [
+    promptSubmitted$,
+    threads,
+    updateThreads,
+    currentThread,
+    gameRound,
+    setCurrentThread,
+  ])
 
   useEffect(() => {
     const subscription: Subscription = submissionSuccess$.subscribe(
@@ -178,81 +214,6 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
       for (const txHash of txHashes) {
         console.debug("txHash", txHash, pendingTxs)
         if (pendingTxs.includes(txHash)) {
-          console.debug("pendingTxs includes txHash", txHash)
-          // get receipt
-          const receipt = await publicClient.getTransactionReceipt({
-            hash: txHash,
-          })
-
-          // check receipt for logs of event `LogBytes(string label, bytes value)`
-          for (const log of receipt.logs) {
-            for (const targetABI of [suciphus.abi, weth.abi]) {
-              let decoded
-              try {
-                decoded = decodeEventLog({
-                  abi: targetABI,
-                  data: log.data,
-                  topics: log.topics,
-                })
-              } catch (e) {
-                console.debug("failed to decode log (this is normal)", e)
-                continue
-              }
-
-              if (decoded.args) {
-                if (
-                  decoded.eventName === "PromptSubmitted" &&
-                  "runId" in decoded.args &&
-                  "threadId" in decoded.args
-                ) {
-                  const decodedRunId = removeQuotes(
-                    decoded.args.runId as string
-                  )
-                  const decodedThreadId = removeQuotes(
-                    decoded.args.threadId as string
-                  )
-
-                  // Update the URL without causing a page refresh
-                  window.history.replaceState(
-                    null,
-                    "",
-                    `${window.location.origin}/player/${decodedThreadId}`
-                  )
-
-                  // router.push(`/player/${decodedThreadId}`)
-
-                  // Check if the thread and run IDs already exist before updating
-                  if (
-                    !threads?.some((thread) => thread.id === decodedThreadId)
-                  ) {
-                    updateThreads?.(decodedThreadId, decodedRunId)
-                  }
-
-                  setLastRun({
-                    runId: decodedRunId,
-                    threadId: decodedThreadId,
-                  }) // Set the lastRunId state
-
-                  if (!currentThread) {
-                    setCurrentThread({
-                      id: decodedThreadId,
-                      runId: decodedRunId,
-                      success: false,
-                      round: gameRound || 0,
-                    })
-                  }
-                } else if (
-                  decoded.eventName === "LogStrings" &&
-                  "values" in decoded.args
-                ) {
-                  const decodedMessages = (decoded.args.values as string[]).map(
-                    (jsonStr) => JSON.parse(jsonStr) as Message
-                  )
-                  console.log({ decodedMessages })
-                }
-              }
-            }
-          }
           setPendingTxs((prev) => prev.filter((hash) => hash !== txHash))
         }
       }
@@ -438,7 +399,7 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
                   <motion.div
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: "auto" }}
-                    transition={{ duration: 0.5, delay: 0.7 }}
+                    transition={{ duration: 0.5, delay: 0.4 }}
                     className="w-full"
                   >
                     <Card className="w-full items-center border-0 bg-gradient-to-r from-emerald-500/60 to-sky-600/60 hue-rotate-15 backdrop-blur-lg">
