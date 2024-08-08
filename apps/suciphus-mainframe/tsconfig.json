@@ -20,7 +20,8 @@
     ],
     "paths": {
       "@/*": ["./src/*"],
-      "@hooks/*": ["./src/components/hooks/*"]
+      "@hooks/*": ["./src/components/hooks/*"],
+      "@/context/*": ["./src/components/context/*"]
     }
   },
   "include": [

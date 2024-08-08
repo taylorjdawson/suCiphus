@@ -3,24 +3,16 @@
 import * as React from "react"
 import { KeyboardEvent, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
+import { useCurrentThread } from "@/context/current-thread"
 import { decodeEventLog, Hash } from "@flashbots/suave-viem"
 import {
   useOnPromptSubmitted,
   useOnSubmissionSuccess,
 } from "@hooks/useContractEvents"
-import { Subscribe } from "@react-rxjs/core"
 import { suciphus, weth } from "@repo/suciphus-suapp/src/suciphus"
 import { AnimatePresence, LayoutGroup, motion } from "framer-motion"
-import {
-  AlertTriangle,
-  Gem,
-  HandCoins,
-  Loader,
-  Terminal,
-  Wallet,
-} from "lucide-react"
+import { Loader, Terminal } from "lucide-react"
 import { Subscription } from "rxjs"
-import { toast } from "sonner"
 import { useAccount, useSwitchChain } from "wagmi"
 
 import { getMessages, Message } from "@/lib/openai"
@@ -30,26 +22,13 @@ import { removeQuotes } from "@/lib/utils"
 import { NakedTextArea } from "@/components/ui/textarea.naked"
 
 import AddCredits from "./add-credits"
-import { Financials } from "./financials"
-import { MessageCard } from "./message" // Import the new Message component
-
 import { Messages } from "./messages"
-import { Thread, useSuaveWallet } from "./suave-provider"
+import { useSuaveWallet } from "./suave-provider"
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert"
 import { Button } from "./ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "./ui/card"
+import { Card, CardDescription, CardHeader, CardTitle } from "./ui/card"
 import { ScrollArea } from "./ui/scroll-area"
-import { Separator } from "./ui/separator"
 import { Skeleton } from "./ui/skeleton"
-import { Toaster } from "./ui/sonner"
-
-const ATTEMPTS_PER_ETH = 1000n
 
 export interface PromptProps {
   className?: string
@@ -81,8 +60,9 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
   const [lastRun, setLastRun] = useState<{
     runId: string
     threadId: string
-  } | null>(null) // New state variable for lastRunId
-  const [currentThread, setCurrentThread] = useState<Thread | null>(null) // New state variable for currentThread
+  } | null>(null)
+  const { currentThread, setCurrentThread } = useCurrentThread()
+
   const [showSuccessAlert, setShowSuccessAlert] = useState(false)
 
   const submissionSuccess$ = useOnSubmissionSuccess()
@@ -122,7 +102,6 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
   useEffect(() => {
     if (messages.length > 0) {
       if (messagesEndRef.current) {
-        console.log("messagesEndRef.current")
         messagesEndRef.current.scrollIntoView({
           behavior: isInitialLoad ? "instant" : "smooth",
         })
@@ -136,7 +115,6 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
   useEffect(() => {
     if (currentThread?.success) {
       if (messagesEndRef.current) {
-        console.log("messagesEndRef.current")
         messagesEndRef.current.scrollIntoView({
           behavior: isInitialLoad ? "instant" : "smooth",
         })
@@ -168,7 +146,6 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
 
   useEffect(() => {
     if (threadId && threadId !== "new") {
-      console.log("threadId changed fetching messages", threadId)
       fetchMessages()
     }
   }, [threadId])
@@ -184,10 +161,12 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
   useEffect(() => {
     if (lastRun && lastRun.runId && lastRun.threadId) {
       pollGetLastMessage(lastRun.threadId, lastRun.runId).then((message) => {
-        console.log("pollGetLastMessage", { message })
         if (message) {
-          console.log("setMessages", { message })
-          setMessages([message, ...messages])
+          setMessages((prevMessages) => {
+            const newMessages = [message, ...prevMessages]
+
+            return newMessages
+          })
         }
       })
     }
@@ -204,7 +183,7 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
           const receipt = await publicClient.getTransactionReceipt({
             hash: txHash,
           })
-          console.log({ receipt })
+
           // check receipt for logs of event `LogBytes(string label, bytes value)`
           for (const log of receipt.logs) {
             for (const targetABI of [suciphus.abi, weth.abi]) {
@@ -220,7 +199,6 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
                 continue
               }
 
-              console.debug("decoded log", decoded)
               if (decoded.args) {
                 if (
                   decoded.eventName === "PromptSubmitted" &&
@@ -241,6 +219,8 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
                     `${window.location.origin}/player/${decodedThreadId}`
                   )
 
+                  // router.push(`/player/${decodedThreadId}`)
+
                   // Check if the thread and run IDs already exist before updating
                   if (
                     !threads?.some((thread) => thread.id === decodedThreadId)
@@ -254,19 +234,21 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
                   }) // Set the lastRunId state
 
                   if (!currentThread) {
-                    console.log("setting currentThread", decodedThreadId)
-                    findAndSetCurrentThread(decodedThreadId)
+                    setCurrentThread({
+                      id: decodedThreadId,
+                      runId: decodedRunId,
+                      success: false,
+                      round: gameRound || 0,
+                    })
                   }
                 } else if (
                   decoded.eventName === "LogStrings" &&
                   "values" in decoded.args
                 ) {
-                  console.log("decoded messages", decoded.args.values)
                   const decodedMessages = (decoded.args.values as string[]).map(
                     (jsonStr) => JSON.parse(jsonStr) as Message
                   )
                   console.log({ decodedMessages })
-                  // setMessages(decodedMessages)
                 }
               }
             }
@@ -335,10 +317,9 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
             // Compute nonce for the transaction
             // const nonce = await getUserNonce()
             const escapedInputValue = JSON.stringify(inputValue).slice(1, -1)
-
             const hash = await submitPrompt({
               prompt: escapedInputValue,
-              threadId: threadId && threadId !== "new" ? threadId : "",
+              threadId: currentThread?.id || "",
               suaveWallet,
               nonce,
             }).catch((error) => {

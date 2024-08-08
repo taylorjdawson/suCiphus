@@ -1,8 +1,8 @@
-- [ ] UI to show current rewards
-- [ ] show the current round in ui (above the threads list)
-- [ ] You win modal after successful submission
-- [ ] Fetch threads by round
-- [ ] show current pot value (with/without house cut)
+- [x] UI to show current rewards
+- [x] show the current round in ui (above the threads list)
+- [x] You win modal after successful submission
+- [x] Fetch threads by round
+- [x] show current pot value (with/without house cut)
 
 - [ ] Add a vercel cron job to update the OPENAI_API key
 - [ ] Build a better deploy CI for toliman

@@ -9,7 +9,7 @@ export async function POST(request: Request) {
     console.log({ savedThread })
   } catch (error) {
     console.error("Failed to save thread:", error)
-    return new Response("Failed to save thread", { status: 500 });
+    return new Response("Failed to save thread", { status: 500 })
   }
-  return Response.json({ res })
+  return Response.json({ success: true })
 }
