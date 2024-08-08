@@ -1,6 +1,7 @@
-import React, { useState } from "react" // Ensure React is imported for typing
-import { Gem } from "lucide-react"
-import { parseEther } from "viem"
+import React, { useState } from "react"
+import { usePurchaseCredits } from "@hooks/usePurchaseCredits" // Import the hook
+import { motion } from "framer-motion" // Import framer-motion
+import { Gem, Loader } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -22,17 +23,18 @@ const PRICE_PER_CREDIT = 10000000000000000n // 0.01 ETH in wei
 
 export default function AddCreditsDialog({
   children,
-  onCreditPurchase,
-  balance, // Add balance prop
+  balance,
 }: {
   children: React.ReactNode
-  onCreditPurchase: (credits: bigint) => void
-  balance: bigint // Specify the type of balance
+
+  balance: bigint
 }) {
   const [creditAmount, setCreditAmount] = useState("")
   const [error, setError] = useState("") // State to hold error message
+  const { purchasing, purchaseCredits } = usePurchaseCredits() // Use the hook
+  const [open, setOpen] = useState(false)
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     const totalCost = BigInt(creditAmount) * PRICE_PER_CREDIT // Calculate total cost
 
     if (totalCost > balance) {
@@ -40,12 +42,14 @@ export default function AddCreditsDialog({
       return
     }
 
-    onCreditPurchase(BigInt(creditAmount))
+    await purchaseCredits(BigInt(creditAmount))
+    setOpen(false)
     setError("") // Clear error message on successful purchase
+    setCreditAmount("")
   }
 
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="sm:max-w-[400px]">
         <DialogHeader>
@@ -80,13 +84,36 @@ export default function AddCreditsDialog({
             &nbsp;
           </Label>
         </div>
-        <DialogFooter className="flex justify-between">
+        <DialogFooter className="flex sm:justify-between">
           <DialogClose asChild>
             <Button onClick={() => setError("")} variant="outline">
               Cancel
             </Button>
           </DialogClose>
-          <Button onClick={handleConfirm}>Confirm</Button>
+          <motion.div
+            initial={{ width: "auto" }}
+            animate={{ width: purchasing ? "auto" : "auto" }}
+            className="flex items-center"
+          >
+            <Button onClick={handleConfirm} disabled={purchasing}>
+              {purchasing && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="mr-2"
+                >
+                  <Loader className="h-4 w-4 animate-spin" />
+                </motion.div>
+              )}
+              <motion.span
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                {purchasing ? "Confirming" : "Confirm"}
+              </motion.span>
+            </Button>
+          </motion.div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

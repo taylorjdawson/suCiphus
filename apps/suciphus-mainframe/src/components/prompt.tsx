@@ -496,17 +496,17 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
           currentThread?.round !== gameRound ? (
             <Card className="w-full border-0 bg-slate-800/90 backdrop-blur-lg">
               <CardHeader>
-                <CardDescription>
+                <CardDescription className="flex h-full w-full items-center justify-start gap-2">
                   {fetchingMessages ? (
-                    <div className="flex h-full w-full items-center justify-start gap-2">
+                    <>
                       <Loader
                         strokeWidth={1}
                         className="h-4 w-4 animate-spin"
                       />
-                      <div className=" font-medium text-muted-foreground">
+                      <span className=" font-medium text-muted-foreground">
                         Retrieving messages
-                      </div>
-                    </div>
+                      </span>
+                    </>
                   ) : (
                     <>The round has been closed.</>
                   )}

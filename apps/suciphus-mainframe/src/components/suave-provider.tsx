@@ -18,6 +18,7 @@ import {
 } from "@flashbots/suave-viem/chains/utils"
 import {
   startWatchingEvents,
+  useContractEvents,
   useOnSubmissionSuccess,
 } from "@hooks/useContractEvents"
 // Import useOnSubmissionSuccess
@@ -64,21 +65,7 @@ export const SuaveWalletProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const { address, chain } = useAccount()
-  const [accountAddress, setAccountAddress] = useState<string | undefined>()
 
-  // useEffect(() => {
-  //   if (address) {
-  //     setAccountAddress(address)
-  //   }
-  // }, [address])
-
-  const { data: transactionCount } = useTransactionCount(
-    address
-      ? {
-          address: address as Address,
-        }
-      : { address: "0x" }
-  )
   const [suaveWallet, setSuaveWallet] = useState<SuaveWallet<CustomTransport>>()
   const [publicClient, setPublicClient] =
     useState<SuaveProvider<HttpTransport>>()
@@ -91,6 +78,7 @@ export const SuaveWalletProvider: React.FC<{ children: React.ReactNode }> = ({
   const [checkingSubmission, setCheckingSubmission] = useState(false)
 
   const submissionSuccess$ = useOnSubmissionSuccess() // Add this line
+  const contractEvent$ = useContractEvents() // Add this line
 
   useEffect(() => {
     setSelectedRound(gameRound)
@@ -120,24 +108,9 @@ export const SuaveWalletProvider: React.FC<{ children: React.ReactNode }> = ({
 
   useEffect(() => {
     if (publicClient && address) {
-      // publicClient.getTransactionCount({ address }).then(setNonce)
-      // getPlayerTransferLogs(publicClient, address).then((logs) => {
-      //   // console.log({ logs })
-      // })
+      publicClient.getTransactionCount({ address }).then(setNonce)
     }
   }, [publicClient, address])
-
-  useEffect(() => {
-    if (transactionCount !== undefined) {
-      setNonce(transactionCount)
-    }
-  }, [transactionCount])
-
-  useEffect(() => {
-    if (nonce !== undefined) {
-      console.log({ nonce })
-    }
-  }, [nonce])
 
   const fetchCreditBalance = async () => {
     if (suaveWallet && publicClient) {
@@ -270,15 +243,6 @@ export const SuaveWalletProvider: React.FC<{ children: React.ReactNode }> = ({
         suciphus.address,
         address
       )
-
-      // const unwatch = publicClient.watchEvent({
-      //   address: suciphus.address,
-      //   event: parseAbiItem(
-      //     "event SuccessfulSubmission(address indexed player, uint256 reward, uint256 round, uint256 season)"
-      //   ),
-      //   onLogs: onSuccessfulSubmission,
-      // })
-
       return () => unwatch()
     }
   }, [publicClient])
@@ -292,6 +256,17 @@ export const SuaveWalletProvider: React.FC<{ children: React.ReactNode }> = ({
     return () => subscription.unsubscribe()
   }, [submissionSuccess$])
 
+  useEffect(() => {
+    const subscription = contractEvent$.subscribe(async (logs: any) => {
+      console.log("onContractEvent", { logs })
+      if (publicClient && address) {
+        const newNonce = await publicClient.getTransactionCount({ address })
+        setNonce(newNonce)
+      }
+    })
+    return () => subscription.unsubscribe()
+  }, [contractEvent$, publicClient, address])
+
   const checkSubmission = async (
     threadId: string,
     runId: string
@@ -299,16 +274,13 @@ export const SuaveWalletProvider: React.FC<{ children: React.ReactNode }> = ({
     if (suaveWallet && nonce !== undefined) {
       // Use nonce from state
       setCheckingSubmission(true)
-      console.log("checkSubmission", { threadId, runId })
       const txHash = await checkSubmissionCall({
         threadId: threadId,
         suaveWallet,
         nonce,
       })
-      setTimeout(() => {
-        setCheckingSubmission(false)
-      }, 5000)
-      return "0x"
+      setCheckingSubmission(false)
+      return txHash
     } else {
       throw new Error(
         "undefined element(s) must be defined" +

@@ -39,7 +39,7 @@ export default function GameStats() {
               opacity: { duration: 0.7 },
               y: { duration: 0.7 },
             }}
-            className="bg-gradient-to-r from-green-400 to-blue-500 bg-clip-text text-3xl font-bold text-transparent"
+            className="text-3xl font-bold"
           >
             {potValue ? formatEther(potValue) : "0"}
           </motion.div>

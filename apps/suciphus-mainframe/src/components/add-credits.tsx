@@ -16,17 +16,8 @@ export default function AddCredits({
     address,
   })
 
-  const { purchaseCredits } = useSuaveWallet()
-
-  const handleCreditPurchase = async (credits: bigint) => {
-    purchaseCredits?.(credits)
-  }
-
   return (
-    <AddCreditsDialog
-      onCreditPurchase={handleCreditPurchase}
-      balance={result.data?.value ?? 0n}
-    >
+    <AddCreditsDialog balance={result.data?.value ?? 0n}>
       {children}
     </AddCreditsDialog>
   )

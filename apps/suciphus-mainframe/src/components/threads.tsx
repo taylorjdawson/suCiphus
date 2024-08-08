@@ -158,8 +158,8 @@ export default function Threads() {
                       y2="21"
                       gradientUnits="userSpaceOnUse"
                     >
-                      <stop stop-color="#10D295" />
-                      <stop offset="0.775" stop-color="#13B0C6" />
+                      <stop stopColor="#10D295" />
+                      <stop offset="0.775" stopColor="#13B0C6" />
                     </linearGradient>
                   </defs>
                 </svg>

@@ -1,5 +1,6 @@
 import { HttpTransport, parseAbiItem } from "@flashbots/suave-viem"
 import { SuaveProvider } from "@flashbots/suave-viem/chains/utils"
+import { weth } from "@repo/suciphus-suapp"
 import { Subject } from "rxjs"
 import { filter } from "rxjs/operators"
 import { Address } from "viem"
@@ -48,9 +49,19 @@ export const startWatchingEvents = (
     },
   })
 
+  const unwatchDeposit = publicClient.watchEvent({
+    address: weth.address,
+    event: parseAbiItem("event Deposit(address indexed dst, uint wad)"),
+    onLogs: (logs) => {
+      console.log("onLogs Deposit", logs)
+      contractEvent$.next(logs?.[0])
+    },
+  })
+
   return () => {
     unwatchSuccessfulSubmission()
     unwatchPromptSubmitted()
+    unwatchDeposit()
   }
 }
 
