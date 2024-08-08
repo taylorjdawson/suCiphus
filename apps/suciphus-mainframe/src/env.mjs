@@ -12,35 +12,13 @@ const addressSchema = z.string().refine(
   }
 )
 
-// Schema to ensure either local or TOLIMAN addresses are defined
-const addressValidationSchema = z
-  .object({
+export const env = createEnv({
+  client: {
+    NEXT_PUBLIC_APP_URL: z.string().min(1),
     NEXT_PUBLIC_SUICPHUS_ADDRESS_TOLIMAN: addressSchema.optional(),
     NEXT_PUBLIC_WETH_ADDRESS_TOLIMAN: addressSchema.optional(),
     NEXT_PUBLIC_SUICPHUS_ADDRESS_LOCAL: addressSchema.optional(),
     NEXT_PUBLIC_WETH_ADDRESS_LOCAL: addressSchema.optional(),
-  })
-  .refine(
-    (data) => {
-      return (
-        (data.NEXT_PUBLIC_SUICPHUS_ADDRESS_TOLIMAN &&
-          data.NEXT_PUBLIC_WETH_ADDRESS_TOLIMAN) ||
-        (data.NEXT_PUBLIC_SUICPHUS_ADDRESS_LOCAL &&
-          data.NEXT_PUBLIC_WETH_ADDRESS_LOCAL)
-      )
-    },
-    {
-      message: "Either both TOLIMAN or both LOCAL addresses must be defined.",
-    }
-  )
-
-export const env = createEnv({
-  client: {
-    NEXT_PUBLIC_APP_URL: z.string().min(1),
-    NEXT_PUBLIC_SUICPHUS_ADDRESS_TOLIMAN: addressSchema,
-    NEXT_PUBLIC_WETH_ADDRESS_TOLIMAN: addressSchema,
-    NEXT_PUBLIC_SUICPHUS_ADDRESS_LOCAL: addressSchema,
-    NEXT_PUBLIC_WETH_ADDRESS_LOCAL: addressSchema,
   },
   server: {
     OPENAI_API_KEY: z.string().min(1),
@@ -56,5 +34,4 @@ export const env = createEnv({
       process.env.NEXT_PUBLIC_SUICPHUS_ADDRESS_LOCAL,
     NEXT_PUBLIC_WETH_ADDRESS_LOCAL: process.env.NEXT_PUBLIC_WETH_ADDRESS_LOCAL,
   },
-  validationSchema: addressValidationSchema, // Add the validation schema here
 })
