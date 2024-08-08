@@ -16,16 +16,25 @@ import {
   HttpTransport,
   WalletClient,
 } from "@flashbots/suave-viem"
+import {
+  getSuaveProvider,
+  getSuaveWallet,
+  SuaveProvider,
+  SuaveWallet,
+} from "@flashbots/suave-viem/chains/utils"
+import { encodeFunctionData, hexToBigInt } from "@flashbots/suave-viem/utils"
+import { weth } from "@repo/suciphus-suapp/src/suciphus"
+import { useAccount } from "wagmi"
 
-import { getSuaveProvider, getSuaveWallet, SuaveProvider, SuaveWallet } from "@flashbots/suave-viem/chains/utils"
-
-import { suaveLocal } from "@/lib/chains/suave-local"
+import { suaveLocal } from "@/lib/suave"
 
 interface WalletContextType {
   connectWallet: () => Promise<void>
   account?: Address
   publicClient?: SuaveProvider<HttpTransport>
   suaveWallet?: SuaveWallet<CustomTransport>
+  connected: boolean
+  creditBalance?: bigint
 }
 
 type EthereumProvider = { request(...args: any): Promise<any> }
@@ -35,6 +44,7 @@ const WalletContext = createContext<WalletContextType>({
   connectWallet: async () => {
     console.warn("Wallet provider not initialized")
   },
+  connected: false,
 })
 
 interface WalletProviderProps {
@@ -42,11 +52,14 @@ interface WalletProviderProps {
 }
 
 export const WalletProvider = ({ children }: WalletProviderProps) => {
+  const { address } = useAccount() // Use the useAccount hook to get the connected account address
   const [suaveWallet, setSuaveWallet] = useState<SuaveWallet<CustomTransport>>()
-  const [account, setAccount] = useState<Address>()
-  const [publicClient, setPublicClient] = useState<SuaveProvider<HttpTransport>>()
+  const [publicClient, setPublicClient] =
+    useState<SuaveProvider<HttpTransport>>()
   const [walletClient, setWalletClient] = useState<WalletClient>()
   const [eth, setEth] = useState<{ request(...args: any): Promise<any> }>()
+  const [connected, setConnected] = useState<boolean>(false)
+  const [creditBalance, setCreditBalance] = useState<bigint>()
 
   const configureChain = async (
     walletClient: WalletClient
@@ -95,11 +108,12 @@ export const WalletProvider = ({ children }: WalletProviderProps) => {
     }
 
     if (!publicClient) {
-      const publicClient = getSuaveProvider(http(suaveLocal.rpcUrls.default.http[0]))
+      const publicClient = getSuaveProvider(
+        http(suaveLocal.rpcUrls.default.http[0])
+      )
       setPublicClient(publicClient)
     }
-
-  }, [publicClient, walletClient, account, eth])
+  }, [publicClient, walletClient, eth])
 
   const connectWallet = async () => {
     if (!walletClient || !eth) {
@@ -109,29 +123,69 @@ export const WalletProvider = ({ children }: WalletProviderProps) => {
       if (success) {
         const addresses = await walletClient.requestAddresses()
         if (addresses.length > 0) {
-          setAccount(addresses[0])
           const suaveWallet = getSuaveWallet({
             transport: custom(eth),
             jsonRpcAccount: addresses[0],
           })
           console.log({ suaveWallet })
           setSuaveWallet(suaveWallet)
+          setConnected(true)
         }
       }
     })
     const addresses = await walletClient.requestAddresses()
     if (addresses.length > 0) {
-      setAccount(addresses[0])
+      // setAccount(addresses[0])
     }
   }
+
+  const fetchCreditBalance = async () => {
+    if (suaveWallet && publicClient) {
+      const newBalance = await publicClient.call({
+        to: weth.address,
+        data: encodeFunctionData({
+          functionName: "balanceOf",
+          args: [suaveWallet.account.address],
+          abi: weth.abi,
+        }),
+        type: "0x0",
+      })
+      if (newBalance.data) {
+        const nb = hexToBigInt(newBalance.data)
+        setCreditBalance(nb)
+      }
+    }
+  }
+
+  useEffect(() => {
+    if (suaveWallet && publicClient) {
+      fetchCreditBalance()
+    }
+  }, [suaveWallet, publicClient])
+
+  useEffect(() => {
+    if (address) {
+      const eth = getWindowEthereum()
+      if (eth) {
+        const suaveWallet = getSuaveWallet({
+          transport: custom(eth),
+          jsonRpcAccount: address,
+        })
+        setSuaveWallet(suaveWallet)
+        setConnected(true)
+      }
+    }
+  }, [address])
 
   return (
     <WalletContext.Provider
       value={{
         connectWallet,
-        account,
+        account: address, // Use the address from useAccount
         publicClient,
         suaveWallet,
+        connected,
+        creditBalance,
       }}
     >
       {children}

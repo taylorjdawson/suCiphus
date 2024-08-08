@@ -3,6 +3,7 @@ import Link from "next/link"
 import { siteConfig } from "@/config/site"
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
+import { ConnectWallet } from "@/components/connect-wallet"
 import { Icons } from "@/components/icons"
 
 export default function Home() {
@@ -16,12 +17,7 @@ export default function Home() {
           Think you can social engineer Suciphus?
         </p>
         <div className="flex gap-2">
-          <Link
-            href="/player"
-            className={cn(buttonVariants({ size: "default" }))}
-          >
-            Get Started
-          </Link>
+          <ConnectWallet />
         </div>
       </div>
     </main>

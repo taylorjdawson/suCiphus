@@ -1,156 +1,478 @@
 "use client"
 
 import * as React from "react"
-import { KeyboardEvent, useEffect, useState } from "react"
+import { KeyboardEvent, useEffect, useRef, useState } from "react"
+import { useRouter } from "next/navigation"
+import { useCurrentThread } from "@/context/current-thread"
+import { decodeEventLog, Hash } from "@flashbots/suave-viem"
 import {
-  Address,
-  CustomTransport,
-  decodeEventLog,
-  encodeFunctionData,
-  Hash,
-  HttpTransport,
-  parseEther,
-} from "@flashbots/suave-viem"
-import suciphus from "@repo/suciphus-suapp/out/Suciphus.sol/Suciphus.json"
-import { suciphus as suciphusDeployment } from "@repo/suciphus-suapp/src/suciphus"
+  useOnPromptSubmitted,
+  useOnSubmissionSuccess,
+} from "@hooks/useContractEvents"
+import { suciphus, weth } from "@repo/suciphus-suapp/src/suciphus"
+import { AnimatePresence, LayoutGroup, motion } from "framer-motion"
+import { Loader, Terminal } from "lucide-react"
+import { Subscription } from "rxjs"
+import { useAccount, useSwitchChain } from "wagmi"
 
+import { getMessages, Message } from "@/lib/openai"
+import { suaveChain } from "@/lib/suave"
 import { submitPrompt } from "@/lib/suciphus"
+import { removeQuotes } from "@/lib/utils"
+import { NakedTextArea } from "@/components/ui/textarea.naked"
 
-import { Input } from "./ui/input"
-import { useWallet } from "./wallet-provider"
+import AddCredits from "./add-credits"
+import { Messages } from "./messages"
+import { useSuaveWallet } from "./suave-provider"
+import { Alert, AlertDescription, AlertTitle } from "./ui/alert"
+import { Button } from "./ui/button"
+import { Card, CardDescription, CardHeader, CardTitle } from "./ui/card"
+import { ScrollArea } from "./ui/scroll-area"
+import { Skeleton } from "./ui/skeleton"
 
 export interface PromptProps {
   className?: string
+  threadId: string
 }
 
-export const Prompt = ({ className }: PromptProps) => {
-  const { suaveWallet, publicClient, account } = useWallet()
+export const Prompt = ({ className, threadId }: PromptProps) => {
+  const router = useRouter()
+  const {
+    suaveWallet,
+    publicClient,
+    creditBalance,
+    threads,
+    refreshBalance,
+    updateThreads,
+    gameRound,
+    checkSubmission,
+    nonce,
+  } = useSuaveWallet()
+  const { address, chainId } = useAccount()
+  const { switchChain } = useSwitchChain()
+
   const [inputValue, setInputValue] = useState("")
-  const [prompts, setPrompts] = useState<string[]>([])
-  const [stateVal, setStateVal] = useState<number>()
+  const [messages, setMessages] = useState<Message[]>([])
   const [pendingTxs, setPendingTxs] = useState<Hash[]>([])
+  const [fetchingMessages, setFetchingMessages] = useState(false)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const [isInitialLoad, setIsInitialLoad] = useState(true)
+  const [lastRun, setLastRun] = useState<{
+    runId: string
+    threadId: string
+  } | null>(null)
+  const { currentThread, setCurrentThread } = useCurrentThread()
+
+  const [showSuccessAlert, setShowSuccessAlert] = useState(false)
+
+  const submissionSuccess$ = useOnSubmissionSuccess()
+  const promptSubmitted$ = useOnPromptSubmitted()
+
+  useEffect(() => {
+    const subscription: Subscription = promptSubmitted$.subscribe(
+      (logs: any) => {
+        console.log("promptSubmittedReceived logs:", logs)
+
+        const decodedRunId = removeQuotes(logs.args.runId as string)
+        const decodedThreadId = removeQuotes(logs.args.threadId as string)
+
+        // Update the URL without causing a page refresh
+        window.history.replaceState(
+          null,
+          "",
+          `${window.location.origin}/player/${decodedThreadId}`
+        )
+
+        pollGetLastMessage(decodedThreadId, decodedRunId).then((message) => {
+          if (message) {
+            setMessages((prevMessages) => {
+              const newMessages = [message, ...prevMessages]
+
+              return newMessages
+            })
+          }
+        })
+
+        // Check if the thread and run IDs already exist before updating
+        if (!threads?.some((thread) => thread.id === decodedThreadId)) {
+          updateThreads?.(decodedThreadId, decodedRunId)
+        }
+
+        if (!currentThread) {
+          setCurrentThread({
+            id: decodedThreadId,
+            runId: decodedRunId,
+            success: false,
+            round: gameRound || 0,
+          })
+        }
+      }
+    )
+    return () => subscription.unsubscribe()
+  }, [
+    promptSubmitted$,
+    threads,
+    updateThreads,
+    currentThread,
+    gameRound,
+    setCurrentThread,
+  ])
+
+  useEffect(() => {
+    const subscription: Subscription = submissionSuccess$.subscribe(
+      (logs: any) => {
+        console.log("submissionSuccess Received logs:", logs)
+
+        setShowSuccessAlert(true)
+        setTimeout(() => {
+          setShowSuccessAlert(false)
+        }, 5000)
+        // Add any additional logic you want to execute after the submission
+
+        // Update currentThread success to true
+        setCurrentThread((prevThread) =>
+          prevThread ? { ...prevThread, success: true } : null
+        )
+      }
+    )
+
+    // Cleanup subscription on unmount
+    return () => subscription.unsubscribe()
+  }, [submissionSuccess$])
+
+  useEffect(() => {
+    if (messages.length > 0) {
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({
+          behavior: isInitialLoad ? "instant" : "smooth",
+        })
+      }
+      if (isInitialLoad) {
+        setIsInitialLoad(false)
+      }
+    }
+  }, [messages, currentThread])
+
+  useEffect(() => {
+    if (currentThread?.success) {
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({
+          behavior: isInitialLoad ? "instant" : "smooth",
+        })
+      }
+    }
+  }, [currentThread])
+
+  const findAndSetCurrentThread = (threadId: string) => {
+    if (currentThread?.id !== threadId) {
+      const foundThread =
+        threads?.find((thread) => thread.id === threadId) || null
+      setCurrentThread(foundThread)
+    }
+  }
+
+  const fetchMessages = async () => {
+    setFetchingMessages(true)
+
+    getMessages(threadId)
+      .then((messages) => {
+        setMessages(messages)
+        setFetchingMessages(false)
+      })
+      .catch((error) => {
+        console.error("Failed to fetch messages:", error)
+        setFetchingMessages(false)
+      })
+  }
+
+  useEffect(() => {
+    if (threadId && threadId !== "new") {
+      fetchMessages()
+    }
+  }, [threadId])
+
+  useEffect(() => {
+    if (threadId && threadId !== "new") {
+      findAndSetCurrentThread(threadId)
+    } else if (!threadId && threads?.length) {
+      router.push(`/player/${threads[0].id}`)
+    }
+  }, [threadId, threads])
 
   const fetchPendingReceipts = async (txHashes: Hash[]) => {
-    console.log("fetchPendingReceipts", { txHashes })
     if (publicClient) {
+      console.debug("has publicClient")
       for (const txHash of txHashes) {
+        console.debug("txHash", txHash, pendingTxs)
         if (pendingTxs.includes(txHash)) {
-          // get receipt
-          const receipt = await publicClient.getTransactionReceipt({
-            hash: txHash,
-          })
-          console.log({ receipt })
-          // check receipt for logs of event `LogBytes(string label, bytes value)`
-          for (const log of receipt.logs) {
-            const decoded = decodeEventLog({
-              abi: suciphus.abi,
-              data: log.data,
-              topics: log.topics,
-            })
-            console.log("decoded log", decoded)
-          }
           setPendingTxs((prev) => prev.filter((hash) => hash !== txHash))
         }
       }
     }
   }
 
-  useEffect(() => {
-    if (stateVal === undefined) {
-      // fetchState()
-    }
-    if (publicClient) {
-      publicClient
-        .getContractEvents({
-          abi: suciphus.abi,
-          address: suciphusDeployment.address,
-        })
-        .then((logs) => {
-          console.log({ logs })
-        })
-      publicClient.watchPendingTransactions({
-        onTransactions: async (txHashes) => {
-          // await fetchState()
-          await fetchPendingReceipts(txHashes)
-        },
-      })
-    }
-  }, [publicClient, pendingTxs])
+  const pollGetLastMessage = async (
+    threadId: string,
+    runId: string,
+    attempt = 0 // Add an attempt counter with a default value of 0
+  ): Promise<Message | undefined> => {
+    console.log("pollGetLastMessage", { threadId, runId, attempt })
+    try {
+      const messages = await getMessages(threadId, runId)
+      console.log("pollGetLastMessage", { messages })
 
-  // const fetchState = async () => {
-  //   if (publicClient) {
-  //     const state = await publicClient.call({
-  //       to: suciphusDeployment.address,
-  //       data: encodeFunctionData({
-  //         abi: suciphus.abi,
-  //         functionName: "stateNum",
-  //       }),
-  //     })
-  //     if (!state.data) {
-  //       console.warn("No data returned from state call")
-  //       return
-  //     }
-  //     setStateVal(parseInt(state.data, 16))
-  //   }
-  // }
+      if (messages.length === 0) {
+        if (attempt < 15) {
+          // Check if the attempt count is less than 3 (for a total of 4 tries)
+          await new Promise((resolve) => setTimeout(resolve, 860))
+          return pollGetLastMessage(threadId, runId, attempt + 1) // Recurse with incremented attempt counter
+        } else {
+          console.log("Max retries reached, stopping poll.")
+          return undefined // Return undefined after max attempts
+        }
+      } else {
+        // Return the last message if it is not pending
+        return messages[0]
+      }
+    } catch (error) {
+      console.error("Error polling for last message:", error)
+      return undefined // Return undefined in case of error
+    }
+  }
 
-  const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInputValue(event.target.value)
   }
 
-  const handleKeyPress = async (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Enter" && inputValue.trim() !== "") {
-      setPrompts([...prompts, inputValue])
-      setInputValue("") // Clear the input after adding
-      if (account && suaveWallet && publicClient) {
-        console.log(account)
+  const handleKeyPress = async (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === "Enter") {
+      if (!event.shiftKey) {
+        event.preventDefault() // Prevent the default Enter key behavior (newline)
+        if (inputValue.trim() !== "") {
+          setMessages([
+            {
+              role: "user",
+              content: inputValue,
+              createdAt: new Date().getTime(),
+              status: "pending",
+              runId: null,
+              id: "",
+              threadId: null,
+            },
+            ...messages,
+          ])
+          setInputValue("")
 
-        // Compute nonce for the transaction
-        const nonce = await publicClient.getTransactionCount({
-          address: account,
-        })
-        const hash = await submitPrompt({
-          prompt: inputValue,
-          threadId: "", // TODO: cache this in LocalStorage or smth
-          suaveWallet,
-          nonce, // Pass the computed nonce
-        })
+          if (address && suaveWallet && publicClient) {
+            console.log(address)
 
-        console.log("tx hash", hash)
-        setPendingTxs([...pendingTxs, hash])
+            // Compute nonce for the transaction
+            // const nonce = await getUserNonce()
+            const escapedInputValue = JSON.stringify(inputValue).slice(1, -1)
+            const hash = await submitPrompt({
+              prompt: escapedInputValue,
+              threadId: currentThread?.id || "",
+              suaveWallet,
+              nonce: await publicClient.getTransactionCount({ address }),
+            }).catch((error) => {
+              console.error("error submitting prompt", error)
+              setMessages(messages)
+              return "0x" as const
+            })
+
+            if (hash !== "0x") {
+              console.debug("tx hash", hash)
+              setMessages((currentMessages) => [
+                {
+                  ...currentMessages[0],
+                  status: "complete" as const,
+                  runId: "",
+                },
+                ...currentMessages.slice(1),
+              ])
+
+              setPendingTxs((currentTxs) => [...currentTxs, hash])
+              refreshBalance?.()
+            }
+          }
+        }
+      } else {
+        // Allow Shift+Enter to create a new line
+        return
       }
     }
   }
 
+  useEffect(() => {
+    if (pendingTxs.length > 0) {
+      console.log("fetchPendingReceipts", { pendingTxs })
+      fetchPendingReceipts(pendingTxs)
+    }
+  }, [pendingTxs])
+
+  const doCheckSubmission = async (runId: string) => {
+    if (suaveWallet && currentThread?.id && checkSubmission) {
+      const txHash = await checkSubmission(currentThread?.id, runId)
+      if (txHash !== "0x") {
+        console.log({ txHash })
+        setPendingTxs([...pendingTxs, txHash])
+      }
+    } else {
+      throw new Error(
+        "undefined element(s) must be defined" +
+          JSON.stringify({ threadId, suaveWallet })
+      )
+    }
+  }
+
   return (
-    <div className={`w-full ${className}`}>
-      <div>
-        State: {stateVal === undefined ? <em>loading...</em> : stateVal}
-      </div>
-      <div>
-        {prompts.map((prompt, index) => (
-          <div key={index}>{prompt}</div>
-        ))}
-      </div>
-      <div>
-        <Input
-          placeholder="Enter your prompt"
-          disabled={!suaveWallet}
-          value={inputValue}
-          onChange={handleInputChange}
-          onKeyDown={handleKeyPress}
-        />
-      </div>
-      {pendingTxs.length > 0 && (
-        <div>
-          <p>Pending</p>
-          <ul>
-            {pendingTxs.map((tx, index) => (
-              <li key={index}>{tx}</li>
-            ))}
-          </ul>
+    <div className="relative flex h-full w-full flex-col justify-end">
+      <AnimatePresence>
+        {showSuccessAlert && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.5 }}
+            className="absolute left-0 top-0 z-20 w-full"
+          >
+            <Alert className="border-0 bg-gradient-to-r from-emerald-500/60 to-sky-600/60 hue-rotate-15 backdrop-blur-lg">
+              <Terminal className="h-4 w-4" />
+              <AlertTitle>Success! 🎉</AlertTitle>
+              <AlertDescription>You won the pot!</AlertDescription>
+            </Alert>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <div className="flex flex-col justify-end gap-4 ">
+        <LayoutGroup>
+          <AnimatePresence>
+            <ScrollArea className="h-[calc(100vh-14rem)] p-4 2xl:h-[calc(100vh-20rem)]  2xl:p-8 ">
+              <div className="flex flex-col gap-6">
+                {fetchingMessages ? (
+                  <>
+                    <motion.div
+                      layout
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="ml-auto h-20 w-3/4 px-4 py-3"
+                    >
+                      <Skeleton />
+                    </motion.div>
+                    <motion.div
+                      layout
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="ml-6 h-32 w-3/4 px-4 py-3"
+                    >
+                      <Skeleton />
+                    </motion.div>
+                    <motion.div
+                      layout
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="ml-auto h-24 w-3/4 px-4 py-3"
+                    >
+                      <Skeleton />
+                    </motion.div>
+                  </>
+                ) : (
+                  <Messages
+                    messages={messages}
+                    address={address}
+                    checkSubmission={doCheckSubmission}
+                  />
+                )}
+                {messages.length > 0 && currentThread?.success && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    transition={{ duration: 0.5, delay: 0.4 }}
+                    className="w-full"
+                  >
+                    <Card className="w-full items-center border-0 bg-gradient-to-r from-emerald-500/60 to-sky-600/60 hue-rotate-15 backdrop-blur-lg">
+                      <CardHeader className="text-center">
+                        <CardTitle>Success 🎉</CardTitle>
+                        <CardDescription>You won the pot!</CardDescription>
+                      </CardHeader>
+                    </Card>
+                  </motion.div>
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+            </ScrollArea>
+          </AnimatePresence>
+        </LayoutGroup>
+
+        <div className="flex flex-col items-center gap-2">
+          {!suaveWallet ? (
+            <div className="mx-2 text-xs text-muted-foreground">
+              Please connect your wallet to play.
+            </div>
+          ) : chainId !== suaveChain.id ? (
+            <div className="mx-2 text-xs text-muted-foreground">
+              Wrong chain please{" "}
+              <Button
+                onClick={() => switchChain({ chainId: suaveChain.id })}
+                className="h-min w-min p-0 text-xs"
+                variant="link"
+              >
+                switch
+              </Button>{" "}
+              to <span className="font-semibold ">{suaveChain.name}</span> chain
+              to play.
+            </div>
+          ) : creditBalance === 0n ? (
+            <div className="mx-2 text-xs text-muted-foreground">
+              Insufficient credits.{" "}
+              <AddCredits>
+                <Button className="h-min w-min p-0 text-xs" variant="link">
+                  Add more
+                </Button>
+              </AddCredits>{" "}
+              to play.
+            </div>
+          ) : null}
+
+          {threadId &&
+          threadId !== "new" &&
+          currentThread?.round !== gameRound ? (
+            <Card className="w-full border-0 bg-slate-800/90 backdrop-blur-lg">
+              <CardHeader>
+                <CardDescription className="flex h-full w-full items-center justify-start gap-2">
+                  {fetchingMessages ? (
+                    <>
+                      <Loader
+                        strokeWidth={1}
+                        className="h-4 w-4 animate-spin"
+                      />
+                      <span className=" font-medium text-muted-foreground">
+                        Retrieving messages
+                      </span>
+                    </>
+                  ) : (
+                    <>The round has been closed.</>
+                  )}
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          ) : (
+            <Card className="flex min-h-16 w-full items-center justify-center bg-black/20 p-4 backdrop-blur-lg">
+              <NakedTextArea
+                disabled={!suaveWallet || creditBalance === 0n}
+                placeholder="Enter your prompt"
+                value={inputValue}
+                onChange={handleInputChange}
+                onKeyDown={handleKeyPress}
+                className="w-full resize-none bg-transparent"
+              />
+            </Card>
+          )}
         </div>
-      )}
+      </div>
     </div>
   )
 }

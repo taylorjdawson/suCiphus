@@ -1,5 +1,3 @@
-import { TextContentBlock } from "openai/resources/beta/threads/messages.mjs"
-
 import { getMessages } from "@/lib/openai"
 import { columns } from "@/components/table/columns.messages"
 import { DataTable } from "@/components/table/data-table"

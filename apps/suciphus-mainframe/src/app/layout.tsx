@@ -5,8 +5,9 @@ import { Inter } from "next/font/google"
 
 import { siteConfig } from "@/config/site"
 import { cn } from "@/lib/utils"
+import { Toaster } from "@/components/ui/sonner"
+import { Providers } from "@/components/providers"
 import { ThemeProvider } from "@/components/theme-provider"
-import { WalletProvider } from "@/components/wallet-provider"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -70,7 +71,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
       <head />
       <body
         className={cn(
-          "min-h-screen bg-background antialiased",
+          "min-h-screen bg-neutral-950 antialiased",
           inter.className
         )}
       >
@@ -80,7 +81,8 @@ export default function RootLayout({ children }: RootLayoutProps) {
           enableSystem
           disableTransitionOnChange
         >
-          <WalletProvider>{children}</WalletProvider>
+          <Providers>{children}</Providers>
+          <Toaster />
         </ThemeProvider>
       </body>
     </html>

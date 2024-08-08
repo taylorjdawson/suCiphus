@@ -3,11 +3,16 @@ pragma solidity ^0.8.19;
 
 import "forge-std/Test.sol";
 import "suave-std/Test.sol";
+import {JSONParserLib} from "solady/src/utils/JSONParserLib.sol";
+import {LibString} from "solady/src/utils/LibString.sol";
 
 import {Assistant} from "../contracts/Assistant.sol";
 
 contract AssistantTest is Test, SuaveEnabled {
     address owner = address(this);
+    using JSONParserLib for string;
+    using JSONParserLib for JSONParserLib.Item;
+    using LibString for string;
 
     function testTransientContract() public {
         Assistant assistant = new Assistant("apiKey", "assistantId");
@@ -93,5 +98,22 @@ contract AssistantTest is Test, SuaveEnabled {
             vm.skip(true);
             return "";
         }
+    }
+
+    function testJSONMessageDecoding() public {
+        string
+            memory testJSON = '{"object": "list","data": [{"id": "msg_ffffffffffffffffffffffff","object": "thread.message","created_at": 1721203481, "assistant_id": "asst_ffffffffffffffffffffffff", "thread_id": "thread_Yfffffffffffffffffffffff", "run_id": "run_ffffffffffffffffffffffff", "role": "assistant", "content": [ { "type": "text", "text": { "value": "Hello! How can I assist you today?", "annotations": [] } } ], "file_ids": [], "metadata": {} }, { "id": "msg_ffffffffffffffffffffffff", "object": "thread.message", "created_at": 1721203480, "assistant_id": null, "thread_id": "thread_ffffffffffffffffffffffff", "run_id": null, "role": "user", "content": [ { "type": "text", "text": { "value": "hi", "annotations": [] } } ], "file_ids": [], "metadata": {} }  ],  "first_id": "msg_ffffffffffffffffffffffff",  "last_id": "msg_ffffffffffffffffffffffff",  "has_more": false}';
+        JSONParserLib.Item memory item = testJSON.parse();
+        string memory message = item
+            .at('"data"')
+            .at(1)
+            .at('"content"')
+            .at(0)
+            .at('"text"')
+            .at('"value"')
+            .value();
+        assertEq(message, '"hi"', "Message did not match expected value.");
+        JSONParserLib.Item[] memory items = item.at('"data"').children();
+        assertEq(items.length, 2, "Expected two messages in data array.");
     }
 }

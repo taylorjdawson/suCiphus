@@ -5,7 +5,11 @@ export const env = createEnv({
   client: {
     NEXT_PUBLIC_APP_URL: z.string().min(1),
   },
+  server: {
+    OPENAI_API_KEY: z.string().min(1),
+  },
   runtimeEnv: {
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
   },
 })

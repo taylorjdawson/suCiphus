@@ -9,11 +9,14 @@ import "solady/src/utils/LibString.sol";
 import {Assistant} from "./Assistant.sol";
 import "forge-std/console.sol";
 import "openzeppelin-contracts/contracts/utils/math/Math.sol";
+import {WithUtils} from "./utils.sol";
+import {WETH9} from "./WETH9.sol";
 
-contract Suciphus is Suapp {
+contract Suciphus is Suapp, WithUtils {
     using strings for *;
 
     Suave.DataId apiKeyRecord;
+    Suave.DataId assistantIdRecord;
 
     // @todo: set this with conf inputs or constructor
     uint256 public SUBMISSION_FEE = 0.01 ether;
@@ -30,19 +33,63 @@ contract Suciphus is Suapp {
     // Current round number in the ongoing season
     uint256 public round = 0;
 
-    // Mapping of threadId to the round number to enforce rejection of late submissions
+    string private constant NAMESPACE_API = "suciphus:openai_api_key";
+    string private constant NAMESPACE_ASSISTANT =
+        "suciphus:openai_assistant_id";
+    string private constant KEY_API_KEY = "api_key";
+    string private constant KEY_ASSISTANT_ID = "assistant_id";
+    uint public constant ATTEMPTS_PER_ETH = 100;
+
+    WETH9 public WETH;
+
+    // Mapping of id(threadId) to the round number to enforce rejection of late submissions
     // This mapping is used to check if a submission is within the valid round timeframe when determining success.
-    mapping(string => uint256) public threadToRound;
+    mapping(bytes32 => uint256) public threadToRound;
+
+    // mapping of id(threadId) to the player address, to verify that the player is the one who submitted the original prompt
+    mapping(bytes32 => address) public threadToPlayer;
+
+    struct Thread {
+        string id;
+        uint256 round;
+        bool success;
+        string runId;
+    }
+
+    // Mapping from player address to list of Thread structs
+    mapping(address => Thread[]) private playerToThreads;
 
     address private owner;
+
+    uint256 public currentPot; // New state variable to track the current pot value
 
     modifier onlyOwner() {
         require(msg.sender == owner, "Only the owner can call this function");
         _;
     }
 
-    constructor() {
+    /** Restricts function access to owner of given threadId.
+     * NOTE: This restricts access _only_ if a threadId has been set.
+     */
+    modifier onlyThreadOwner(string memory threadId) {
+        bytes32 threadKey = id(threadId);
+        if (threadKey != id("")) {
+            require(
+                threadToPlayer[id(threadId)] == msg.sender,
+                "Only the thread owner can call this function"
+            );
+        }
+        _;
+    }
+
+    modifier confidential() {
+        require(Suave.isConfidential(), "must call confidentially");
+        _;
+    }
+
+    constructor(address weth) {
         owner = msg.sender;
+        WETH = WETH9(payable(weth));
     }
 
     // Define debugging events
@@ -50,6 +97,7 @@ contract Suciphus is Suapp {
     event LogAddress(string label, address value);
     event LogUint(string label, uint256 value);
     event LogBytes(string label, bytes value);
+    event LogStrings(string label, string[] values);
 
     event SuccessfulSubmission(
         address indexed player,
@@ -70,6 +118,16 @@ contract Suciphus is Suapp {
     struct Prompt {
         string prompt;
         string threadId;
+        string runId; // Added runId to the Prompt struct
+    }
+
+    struct AuthRegistration {
+        string apiKey;
+        string assistantId;
+    }
+
+    struct TokenDeposit {
+        uint256 amount;
     }
 
     uint64 public stateNum;
@@ -83,72 +141,125 @@ contract Suciphus is Suapp {
     }
 
     function getApiKey() public returns (string memory) {
-        require(isApiKeySet(), "API key not set");
+        require(isValueSet(apiKeyRecord), "API key not set");
         bytes memory apiKey = Suave.confidentialRetrieve(
             apiKeyRecord,
-            "api_key"
+            KEY_API_KEY
         );
-
         return string(apiKey);
+    }
+
+    function getAssistantId() public returns (string memory) {
+        require(isValueSet(assistantIdRecord), "Assistant id not set");
+        bytes memory assistantId = Suave.confidentialRetrieve(
+            assistantIdRecord,
+            KEY_ASSISTANT_ID
+        );
+        return string(assistantId);
     }
 
     function getAssistant() public returns (Assistant assistant) {
         string memory apiKey = getApiKey();
-        string memory assistantId = "asst_8EN1Avo8QkET8LDwKjLeitky";
-        // TODO: get the assistant id from confStore as well
+        string memory assistantId = getAssistantId();
         assistant = new Assistant(apiKey, assistantId);
     }
 
-    function updateAPIKeyOnchain(Suave.DataId _apiKeyRecord) public onlyOwner {
+    function updateAuthOnchain(
+        Suave.DataId _apiKeyRecord,
+        Suave.DataId _assistantIdRecord
+    ) public onlyOwner {
         apiKeyRecord = _apiKeyRecord;
+        assistantIdRecord = _assistantIdRecord;
     }
 
-    function registerAPIKeyOffchain() public onlyOwner returns (bytes memory) {
-        require(Suave.isConfidential(), "must call confidentially");
-        bytes memory keyData = Context.confidentialInputs();
+    function registerAuthOffchain()
+        public
+        onlyOwner
+        confidential
+        returns (bytes memory)
+    {
+        bytes memory authData = Context.confidentialInputs();
+        AuthRegistration memory auth = abi.decode(authData, (AuthRegistration));
 
         address[] memory peekers = new address[](1);
         peekers[0] = address(this);
 
-        Suave.DataRecord memory record = Suave.newDataRecord(
-            0,
-            peekers,
-            peekers,
-            "suciphus:openai_api_key"
-        );
-        Suave.confidentialStore(record.id, "api_key", keyData);
-
+        Suave.DataId apiKeyRecordId;
+        Suave.DataId assistantIdRecordId;
+        if (bytes(auth.apiKey).length > 0) {
+            Suave.DataRecord memory record = Suave.newDataRecord(
+                0,
+                peekers,
+                peekers,
+                NAMESPACE_API
+            );
+            Suave.confidentialStore(record.id, KEY_API_KEY, bytes(auth.apiKey));
+            apiKeyRecordId = record.id;
+        }
+        if (bytes(auth.assistantId).length > 0) {
+            Suave.DataRecord memory record = Suave.newDataRecord(
+                0,
+                peekers,
+                peekers,
+                NAMESPACE_ASSISTANT
+            );
+            Suave.confidentialStore(
+                record.id,
+                KEY_ASSISTANT_ID,
+                bytes(auth.assistantId)
+            );
+            assistantIdRecordId = record.id;
+        }
         return
             abi.encodeWithSelector(
-                this.updateAPIKeyOnchain.selector,
-                record.id
+                this.updateAuthOnchain.selector,
+                apiKeyRecordId,
+                assistantIdRecordId
             );
     }
 
+    function depositTokens() public confidential {}
+
     function submitPromptCallback(
-        string memory threadId
+        string memory threadId,
+        address player
     ) public emitOffchainLogs {
+        uint256 requiredAmount = 0.01 ether;
+        require(
+            WETH.balanceOf(player) >= requiredAmount,
+            "Insufficient balance to submit prompt"
+        );
+
+        WETH.transferFrom(player, address(this), requiredAmount);
         // Update the round for the threadId
-        threadToRound[threadId] = round;
-        // @todo potentially store the threadId in the contract by player address
+        threadToRound[id(threadId)] = round;
+        // Map threadId to player if it's not already mapped
+        if (threadToPlayer[id(threadId)] == address(0)) {
+            threadToPlayer[id(threadId)] = player;
+            // Add threadId to the list of threads for the player
+            playerToThreads[player].push(
+                Thread({id: threadId, round: round, success: false, runId: ""})
+            );
+        }
+
+        // Update the current pot value
+        currentPot += requiredAmount;
     }
 
-    function submitPrompt() public returns (bytes memory) {
-        require(Suave.isConfidential(), "must call confidentially");
+    function submitPrompt() public confidential returns (bytes memory) {
         bytes memory confPrompt = Context.confidentialInputs();
         Prompt memory prompt = abi.decode(confPrompt, (Prompt));
 
         Assistant assistant = getAssistant();
-
         (string memory runId, string memory threadId) = assistant
-            .createThreadAndRun(msg.sender, prompt.prompt);
+            .createMessageAndRun(msg.sender, prompt.threadId, prompt.prompt);
 
         emit PromptSubmitted(msg.sender, threadId, runId, round, season);
-
         return
             abi.encodeWithSelector(
                 this.submitPromptCallback.selector,
-                threadId
+                threadId,
+                msg.sender
             );
     }
 
@@ -160,42 +271,77 @@ contract Suciphus is Suapp {
         return HOUSE_CUT_PERCENTAGE;
     }
 
-    // Takes the message sender and then checks to see the result
-    // of their prompt.
-    function checkSubmission(string memory threadId) public returns (bool) {
+    function onReadMessages() public emitOffchainLogs {}
+
+    function readMessages() public confidential returns (bytes memory) {
+        bytes memory confInputs = Context.confidentialInputs();
+        string memory threadId = abi.decode(confInputs, (Prompt)).threadId;
+        Assistant assistant = getAssistant();
+        string[] memory messages = assistant.getMessages(threadId);
+        emit LogStrings("messages", messages);
+        return abi.encodeWithSelector(this.onReadMessages.selector);
+    }
+
+    function getPotValue() public view returns (uint256) {
+        uint256 houseCut = Math.mulDiv(currentPot, HOUSE_CUT_PERCENTAGE, 100);
+        return currentPot - houseCut;
+    }
+
+    function onCheckSubmission(
+        bool containsPlayerAddress,
+        address player,
+        string memory threadId
+    ) public emitOffchainLogs {
+        if (containsPlayerAddress) {
+            uint256 amountToSend = getPotValue();
+            emit SuccessfulSubmission(msg.sender, amountToSend, round, season);
+            WETH.transfer(player, amountToSend);
+            // the round is autoclosed on succesful submission
+            closeRound(threadId, player);
+
+            // Reset the current pot for the next round
+            currentPot = 0;
+        } else {
+            emit NothingHappened();
+        }
+    }
+
+    /// Returns true if submission returned an ethereum address.
+    function checkSubmission() public returns (bytes memory) {
+        bytes memory confInputs = Context.confidentialInputs();
+        Prompt memory prompt = abi.decode(confInputs, (Prompt));
+        // TODO: add onlyThreadOwner here and elsewhere
         // Ensure that this thread's submission is within the current round
-        require(threadToRound[threadId] == round, "The round has ended");
+        require(
+            threadToRound[id(prompt.threadId)] == round,
+            "The round has ended"
+        );
 
         Assistant assistant = getAssistant();
 
-        string memory lastMessage = assistant.getLastMessage(
-            msg.sender,
-            threadId
+        string[] memory lastMessage = assistant.getMessages(
+            prompt.threadId,
+            prompt.runId,
+            "1"
         );
-
-        string memory lowerLastMessage = toLower(lastMessage);
-
+        // Ensure that the lastMessage array is not empty
+        require(lastMessage.length > 0, "No messages to process");
+        // Convert the first message in the array to lowercase
+        string memory lowerLastMessage = toLower(lastMessage[0]);
         strings.slice memory lastMessageSlice = lowerLastMessage.toSlice();
         bool containsPlayerAddress = lastMessageSlice.contains(
             addressToString(msg.sender).toSlice()
         );
 
-        if (containsPlayerAddress) {
-            uint256 balance = address(this).balance;
-            uint256 houseCut = Math.mulDiv(balance, HOUSE_CUT_PERCENTAGE, 100);
-            uint256 amountToSend = balance - houseCut;
-
-            payable(msg.sender).transfer(amountToSend);
-            emit SuccessfulSubmission(msg.sender, amountToSend, round, season);
-            // @todo we want to advance to the next round before returning here
-            // this is to prevent race conditions
-            // the round is autoclosed on succesful submission
-            nextRound();
-        }
-
         // @todo consider the event where the prompt is succesful but the contract reverts
 
-        return containsPlayerAddress;
+        return
+            abi.encodeWithSelector(
+                this.onCheckSubmission.selector,
+                containsPlayerAddress,
+                msg.sender,
+                prompt.threadId
+            );
     }
 
     /// @notice Retrieves the current round number
@@ -204,65 +350,28 @@ contract Suciphus is Suapp {
         return round;
     }
 
-    // advances to the next round
-    // @todo call this function when checking a submission and it is sucessful
-    function nextRound() private {
-        // @todo need to send the winning thread to the ai to update the assistant
+    // closes current round and advances to the next round
+    function closeRound(string memory threadId, address player) private {
+        // Find the thread in the playerToThreads mapping
+        Thread[] storage threads = playerToThreads[player];
+        for (uint256 i = 0; i < threads.length; i++) {
+            if (
+                keccak256(abi.encodePacked(threads[i].id)) ==
+                keccak256(abi.encodePacked(threadId))
+            ) {
+                // Set the success property to true
+                threads[i].success = true;
+                break;
+            }
+        }
         round++;
         // Clear the thread to round mapping to free up storage
         // delete threadToRound;
     }
 
-    function bytesToString(
-        bytes memory data
-    ) internal pure returns (string memory) {
-        uint256 length = data.length;
-        bytes memory chars = new bytes(length);
-
-        for (uint i = 0; i < length; i++) {
-            chars[i] = data[i];
-        }
-
-        return string(chars);
-    }
-
-    function addressToString(
-        address _addr
-    ) private pure returns (string memory) {
-        bytes32 value = bytes32(uint256(uint160(_addr)));
-        bytes memory alphabet = "0123456789abcdef";
-        bytes memory str = new bytes(42);
-        str[0] = "0";
-        str[1] = "x";
-        for (uint i = 0; i < 20; i++) {
-            str[2 + i * 2] = alphabet[uint8(value[i + 12] >> 4)];
-            str[3 + i * 2] = alphabet[uint8(value[i + 12] & 0x0f)];
-        }
-        return string(str);
-    }
-
-    function toLower(string memory str) internal pure returns (string memory) {
-        bytes memory bStr = bytes(str);
-        bytes memory bLower = new bytes(bStr.length);
-        for (uint i = 0; i < bStr.length; i++) {
-            // Uppercase characters are between 65 ('A') and 90 ('Z')
-            if (bStr[i] >= 0x41 && bStr[i] <= 0x5A) {
-                // Convert uppercase to lowercase
-                bLower[i] = bytes1(uint8(bStr[i]) + 32);
-            } else {
-                bLower[i] = bStr[i];
-            }
-        }
-        return string(bLower);
-    }
-
-    function isApiKeySet() public view returns (bool isSet) {
-        // assembly allows us to compare DataId (bytes16) to zero value
-        assembly {
-            // Load the value of apiKeyRecord from storage
-            let record := sload(apiKeyRecord.slot)
-            // Check if apiKeyRecord is not equal to bytes16(0)
-            isSet := iszero(iszero(record))
-        }
+    function getThreadIdsByPlayer(
+        address player
+    ) public view returns (Thread[] memory) {
+        return playerToThreads[player];
     }
 }

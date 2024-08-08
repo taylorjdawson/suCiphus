@@ -14,4 +14,4 @@ docs/
 .env
 
 # generated ts
-src/suciphus.ts
+# src/suciphus.ts

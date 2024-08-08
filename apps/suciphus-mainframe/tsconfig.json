@@ -19,7 +19,9 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@hooks/*": ["./src/components/hooks/*"],
+      "@/context/*": ["./src/components/context/*"]
     }
   },
   "include": [
