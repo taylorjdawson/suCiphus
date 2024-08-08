@@ -195,7 +195,7 @@ export const SuaveWalletProvider: React.FC<{ children: React.ReactNode }> = ({
    * @throws Will throw an error if the wallet or nonce is not initialized.
    */
   const purchaseCredits = async (credits: bigint) => {
-    if (!suaveWallet || nonce === undefined) {
+    if (!suaveWallet || !publicClient || !address) {
       throw new Error("Wallet or nonce not initialized")
     }
     const value = PRICE_PER_CREDIT * credits
@@ -203,7 +203,7 @@ export const SuaveWalletProvider: React.FC<{ children: React.ReactNode }> = ({
     await mintTokens({
       suaveWallet,
       value,
-      nonce,
+      nonce: await publicClient.getTransactionCount({ address }),
     })
 
     // Update credit balance
@@ -271,13 +271,14 @@ export const SuaveWalletProvider: React.FC<{ children: React.ReactNode }> = ({
     threadId: string,
     runId: string
   ): Promise<Hex> => {
-    if (suaveWallet && nonce !== undefined) {
+    if (suaveWallet && publicClient && address) {
       // Use nonce from state
       setCheckingSubmission(true)
+      console.log("checkinSubmission", { threadId, runId })
       const txHash = await checkSubmissionCall({
         threadId: threadId,
         suaveWallet,
-        nonce,
+        nonce: await publicClient.getTransactionCount({ address }),
       })
       setCheckingSubmission(false)
       return txHash

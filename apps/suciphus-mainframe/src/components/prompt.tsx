@@ -83,15 +83,20 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
           `${window.location.origin}/player/${decodedThreadId}`
         )
 
+        pollGetLastMessage(decodedThreadId, decodedRunId).then((message) => {
+          if (message) {
+            setMessages((prevMessages) => {
+              const newMessages = [message, ...prevMessages]
+
+              return newMessages
+            })
+          }
+        })
+
         // Check if the thread and run IDs already exist before updating
         if (!threads?.some((thread) => thread.id === decodedThreadId)) {
           updateThreads?.(decodedThreadId, decodedRunId)
         }
-
-        setLastRun({
-          runId: decodedRunId,
-          threadId: decodedThreadId,
-        }) // Set the lastRunId state
 
         if (!currentThread) {
           setCurrentThread({
@@ -194,20 +199,6 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
     }
   }, [threadId, threads])
 
-  useEffect(() => {
-    if (lastRun && lastRun.runId && lastRun.threadId) {
-      pollGetLastMessage(lastRun.threadId, lastRun.runId).then((message) => {
-        if (message) {
-          setMessages((prevMessages) => {
-            const newMessages = [message, ...prevMessages]
-
-            return newMessages
-          })
-        }
-      })
-    }
-  }, [lastRun])
-
   const fetchPendingReceipts = async (txHashes: Hash[]) => {
     if (publicClient) {
       console.debug("has publicClient")
@@ -282,7 +273,7 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
               prompt: escapedInputValue,
               threadId: currentThread?.id || "",
               suaveWallet,
-              nonce,
+              nonce: await publicClient.getTransactionCount({ address }),
             }).catch((error) => {
               console.error("error submitting prompt", error)
               setMessages(messages)
