@@ -2,7 +2,7 @@
 import { Address } from "viem"
 
 export const suciphus = {
-  address: "0xFAd0B696a49E8684038b400497F58614c90a59E8" as Address,
+  address: "0x5fCe9F1d38b8329aDA2B9a6353895533032C1230" as Address,
   abi: [
   {
     "type": "constructor",
@@ -90,6 +90,19 @@ export const suciphus = {
   },
   {
     "type": "function",
+    "name": "currentPot",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "depositTokens",
     "inputs": [],
     "outputs": [],
@@ -150,6 +163,19 @@ export const suciphus = {
   {
     "type": "function",
     "name": "getHouseCutPercentage",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getPotValue",
     "inputs": [],
     "outputs": [
       {
@@ -602,7 +628,7 @@ export const suciphus = {
 ]
 }
 export const weth = {
-  address: "0x2d8B2aC55a0581d53549E66Fc4d79924cBc80DB6" as Address,
+  address: "0x4Cb81abc312879Ca2BBA2Aa792960A080C701c0d" as Address,
   abi: [
   {
     "type": "fallback",

@@ -1,10 +1,18 @@
 import {
+  createPublicClient,
+  decodeEventLog,
   encodeAbiParameters,
   encodeFunctionData,
+  fromHex,
+  getAddress,
+  http,
+  HttpTransport,
+  parseAbiItem,
   Transport,
   type Hex,
 } from "@flashbots/suave-viem"
 import {
+  SuaveProvider,
   SuaveWallet,
   type TransactionRequestSuave,
 } from "@flashbots/suave-viem/chains/utils"
@@ -152,4 +160,101 @@ export const checkSubmission = async (params: SubmitPromptParams) => {
       nonce,
     }),
   })
+}
+
+const transferEventAbi = parseAbiItem(
+  `event Transfer(address indexed src, address indexed dst, uint wad)`
+)
+const withdrawalEventAbi = parseAbiItem(
+  `event Withdrawal(address indexed src, uint wad)`
+)
+const depositEventAbi = parseAbiItem(
+  `event Deposit(address indexed dst, uint wad)`
+)
+
+const getTransferLogs = async (client: SuaveProvider<HttpTransport>) => {
+  return client.getContractEvents({
+    address: weth.address,
+    abi: weth.abi,
+    eventName: "Transfer",
+    fromBlock: 0n,
+    toBlock: "latest",
+  })
+}
+
+export const getCurrentPotValue = async (
+  client: SuaveProvider<HttpTransport>
+): Promise<bigint> => {
+  const potValue = (await client.readContract({
+    address: weth.address,
+    abi: weth.abi,
+    functionName: "balanceOf",
+    args: [suciphus.address],
+  })) as bigint
+  return potValue
+}
+
+export const getPotValue = async (
+  client: SuaveProvider<HttpTransport>
+): Promise<bigint> => {
+  const potValue = (await client.readContract({
+    address: suciphus.address,
+    abi: suciphus.abi,
+    functionName: "getPotValue",
+  })) as bigint
+  return potValue
+}
+
+export const getPlayerTransferLogs = async (
+  client: SuaveProvider<HttpTransport>,
+  playerAddress: string
+) => {
+  const logs = await getTransferLogs(client)
+
+  const creditsSpent = logs.filter(
+    (log) => log.args.src === playerAddress && log.args.dst === suciphus.address
+  )
+  const earnedCredits = logs.filter(
+    (log) => log.args.src === suciphus.address && log.args.dst === playerAddress
+  )
+
+  return { creditsSpent, earnedCredits }
+}
+
+export const getDepositLogs = async (
+  playerAddress: string,
+  contractAddress: string,
+  client: SuaveProvider<HttpTransport>
+) => {
+  const logs = await client.getContractEvents({
+    address: weth.address,
+    abi: weth.abi,
+    eventName: "Deposit",
+    args: {
+      dst: playerAddress,
+    },
+    fromBlock: 0n,
+    toBlock: "latest",
+  })
+
+  return logs
+}
+
+export const getWithdrawalLogs = async (
+  playerAddress: string,
+  contractAddress: string,
+  client: SuaveProvider<HttpTransport>
+) => {
+  const logs = await client.getContractEvents({
+    address: weth.address,
+    abi: weth.abi,
+    eventName: "Withdrawal",
+    args: {
+      from: playerAddress,
+    },
+    fromBlock: 0n,
+    toBlock: "latest",
+  })
+
+  return logs
 }

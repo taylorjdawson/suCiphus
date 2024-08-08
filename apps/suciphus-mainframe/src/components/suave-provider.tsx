@@ -2,10 +2,13 @@
 
 import React, { createContext, useContext, useEffect, useState } from "react"
 import {
+  Address,
   custom,
   CustomTransport,
+  Hex,
   http,
   HttpTransport,
+  parseAbiItem, // Import parseAbiItem
 } from "@flashbots/suave-viem"
 import {
   getSuaveProvider,
@@ -13,11 +16,21 @@ import {
   SuaveProvider,
   SuaveWallet,
 } from "@flashbots/suave-viem/chains/utils"
+import {
+  startWatchingEvents,
+  useOnSubmissionSuccess,
+} from "@hooks/useContractEvents"
+// Import useOnSubmissionSuccess
+import { Subscribe } from "@react-rxjs/core"
 import { suciphus, weth } from "@repo/suciphus-suapp"
-import { useAccount } from "wagmi"
+import { useAccount, useTransactionCount } from "wagmi"
 
 import { suaveChain, suaveLocal } from "@/lib/suave"
-import { mintTokens } from "@/lib/suciphus"
+import {
+  checkSubmission as checkSubmissionCall,
+  getPotValue,
+  mintTokens,
+} from "@/lib/suciphus"
 
 const PRICE_PER_CREDIT = 10000000000000000n
 
@@ -36,6 +49,13 @@ interface SuaveWalletContextType {
   creditBalance?: bigint
   threads?: Thread[]
   refreshBalance?: () => Promise<void>
+  updateThreads?: (id: string, runId: string) => void
+  gameRound?: number
+  selectedRound?: number
+  setSelectedRound?: (round: number) => void
+  potValue?: bigint
+  checkingSubmission?: boolean
+  checkSubmission?: (threadId: string, runId: string) => Promise<Hex>
 }
 
 const SuaveWalletContext = createContext<SuaveWalletContextType>({})
@@ -44,18 +64,42 @@ export const SuaveWalletProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const { address, chain } = useAccount()
+  const [accountAddress, setAccountAddress] = useState<string | undefined>()
+
+  // useEffect(() => {
+  //   if (address) {
+  //     setAccountAddress(address)
+  //   }
+  // }, [address])
+
+  const { data: transactionCount } = useTransactionCount(
+    address
+      ? {
+          address: address as Address,
+        }
+      : { address: "0x" }
+  )
   const [suaveWallet, setSuaveWallet] = useState<SuaveWallet<CustomTransport>>()
   const [publicClient, setPublicClient] =
     useState<SuaveProvider<HttpTransport>>()
   const [nonce, setNonce] = useState<number>()
   const [creditBalance, setCreditBalance] = useState<bigint>()
   const [threads, setThreads] = useState<Thread[]>([])
+  const [gameRound, setGameRound] = useState<number>()
+  const [selectedRound, setSelectedRound] = useState<number>()
+  const [potValue, setPotValue] = useState<bigint>(0n)
+  const [checkingSubmission, setCheckingSubmission] = useState(false)
+
+  const submissionSuccess$ = useOnSubmissionSuccess() // Add this line
+
+  useEffect(() => {
+    setSelectedRound(gameRound)
+  }, [gameRound])
 
   useEffect(() => {
     if (address && chain) {
       const eth = window.ethereum
       if (eth) {
-        console.log(chain.rpcUrls.default.http[0])
         const suaveWallet = getSuaveWallet({
           transport: custom(eth),
           jsonRpcAccount: address,
@@ -63,7 +107,7 @@ export const SuaveWalletProvider: React.FC<{ children: React.ReactNode }> = ({
           chain:
             process.env.NODE_ENV === "development" ? suaveLocal : undefined,
         })
-        console.log({ chain, suaveChain })
+
         // @ts-ignore
         setSuaveWallet(suaveWallet)
         const publicClient = getSuaveProvider(
@@ -76,9 +120,24 @@ export const SuaveWalletProvider: React.FC<{ children: React.ReactNode }> = ({
 
   useEffect(() => {
     if (publicClient && address) {
-      publicClient.getTransactionCount({ address }).then(setNonce)
+      // publicClient.getTransactionCount({ address }).then(setNonce)
+      // getPlayerTransferLogs(publicClient, address).then((logs) => {
+      //   // console.log({ logs })
+      // })
     }
   }, [publicClient, address])
+
+  useEffect(() => {
+    if (transactionCount !== undefined) {
+      setNonce(transactionCount)
+    }
+  }, [transactionCount])
+
+  useEffect(() => {
+    if (nonce !== undefined) {
+      console.log({ nonce })
+    }
+  }, [nonce])
 
   const fetchCreditBalance = async () => {
     if (suaveWallet && publicClient) {
@@ -88,7 +147,7 @@ export const SuaveWalletProvider: React.FC<{ children: React.ReactNode }> = ({
         functionName: "balanceOf",
         args: [address],
       })) as bigint
-      console.log({ newBalance })
+
       if (newBalance > PRICE_PER_CREDIT) {
         const credits = newBalance / PRICE_PER_CREDIT
         setCreditBalance(credits)
@@ -103,7 +162,6 @@ export const SuaveWalletProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [suaveWallet, publicClient])
 
   const refreshBalance = async () => {
-    console.log("refreshBalance")
     await fetchCreditBalance()
   }
 
@@ -116,11 +174,20 @@ export const SuaveWalletProvider: React.FC<{ children: React.ReactNode }> = ({
         args: [address],
       })) as Thread[]
 
+      const threads = rawThreadIds.map((thread) => ({
+        ...thread,
+        id: thread.id.replace(/['"]/g, ""),
+        round: Number(thread.round), // Convert round from bigint to number
+      }))
+
       const uniqueThreads = [
-        ...new Map(
-          rawThreadIds.map((thread) => [thread.id.replace(/['"]/g, ""), thread])
-        ).values(),
+        ...new Map(threads.map((thread) => [thread.id, thread])).values(),
       ]
+
+      // Filter threads by selectedRound
+      // const filteredThreads = uniqueThreads.filter(
+      //   (thread) => thread.round === selectedRound
+      // )
 
       setThreads(uniqueThreads)
     }
@@ -128,7 +195,25 @@ export const SuaveWalletProvider: React.FC<{ children: React.ReactNode }> = ({
 
   useEffect(() => {
     fetchThreads()
-  }, [suaveWallet, publicClient, address])
+  }, [suaveWallet, publicClient, address, selectedRound])
+
+  /**
+   * Fetches the current round from the contract.
+   */
+  const fetchCurrentRound = async () => {
+    if (publicClient) {
+      const round = (await publicClient.readContract({
+        address: suciphus.address,
+        abi: suciphus.abi,
+        functionName: "getCurrentRound",
+      })) as bigint
+      setGameRound(Number(round))
+    }
+  }
+
+  useEffect(() => {
+    fetchCurrentRound()
+  }, [publicClient])
 
   /**
    * Purchases credits by minting tokens.
@@ -152,6 +237,86 @@ export const SuaveWalletProvider: React.FC<{ children: React.ReactNode }> = ({
     fetchCreditBalance()
   }
 
+  /**
+   * Updates the threads array by adding a new thread to the start.
+   *
+   * @param {Thread} newThread - The new thread to add.
+   */
+  const updateThreads = (id: string, runId: string) => {
+    setThreads((prevThreads) => [
+      { id, runId, round: gameRound || 0, success: false },
+      ...prevThreads,
+    ])
+  }
+
+  const fetchPotValue = async () => {
+    if (publicClient) {
+      const value = await getPotValue(publicClient)
+      setPotValue(value)
+    }
+  }
+
+  useEffect(() => {
+    fetchPotValue() // Initial fetch
+    const interval = setInterval(fetchPotValue, 6000) // Update every 6 seconds
+    return () => clearInterval(interval) // Cleanup on unmount
+  }, [publicClient])
+
+  useEffect(() => {
+    if (publicClient && address) {
+      console.log("watching events")
+      const unwatch = startWatchingEvents(
+        publicClient,
+        suciphus.address,
+        address
+      )
+
+      // const unwatch = publicClient.watchEvent({
+      //   address: suciphus.address,
+      //   event: parseAbiItem(
+      //     "event SuccessfulSubmission(address indexed player, uint256 reward, uint256 round, uint256 season)"
+      //   ),
+      //   onLogs: onSuccessfulSubmission,
+      // })
+
+      return () => unwatch()
+    }
+  }, [publicClient])
+
+  useEffect(() => {
+    const subscription = submissionSuccess$.subscribe(async (logs: any) => {
+      console.log("onSuccessfulSubmission", { logs })
+      await fetchCurrentRound()
+      await fetchPotValue()
+    })
+    return () => subscription.unsubscribe()
+  }, [submissionSuccess$])
+
+  const checkSubmission = async (
+    threadId: string,
+    runId: string
+  ): Promise<Hex> => {
+    if (suaveWallet && nonce !== undefined) {
+      // Use nonce from state
+      setCheckingSubmission(true)
+      console.log("checkSubmission", { threadId, runId })
+      const txHash = await checkSubmissionCall({
+        threadId: threadId,
+        suaveWallet,
+        nonce,
+      })
+      setTimeout(() => {
+        setCheckingSubmission(false)
+      }, 5000)
+      return "0x"
+    } else {
+      throw new Error(
+        "undefined element(s) must be defined" +
+          JSON.stringify({ runId, suaveWallet, nonce })
+      )
+    }
+  }
+
   return (
     <SuaveWalletContext.Provider
       value={{
@@ -162,6 +327,13 @@ export const SuaveWalletProvider: React.FC<{ children: React.ReactNode }> = ({
         creditBalance,
         threads,
         refreshBalance,
+        updateThreads,
+        gameRound,
+        selectedRound,
+        setSelectedRound,
+        potValue,
+        checkingSubmission,
+        checkSubmission,
       }}
     >
       {children}

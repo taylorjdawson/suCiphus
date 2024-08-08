@@ -4,19 +4,38 @@ import * as React from "react"
 import { KeyboardEvent, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { decodeEventLog, Hash } from "@flashbots/suave-viem"
+import {
+  useOnPromptSubmitted,
+  useOnSubmissionSuccess,
+} from "@hooks/useContractEvents"
+import { Subscribe } from "@react-rxjs/core"
 import { suciphus, weth } from "@repo/suciphus-suapp/src/suciphus"
-import { AlertTriangle, Gem, HandCoins, Loader, Wallet } from "lucide-react"
+import { AnimatePresence, LayoutGroup, motion } from "framer-motion"
+import {
+  AlertTriangle,
+  Gem,
+  HandCoins,
+  Loader,
+  Terminal,
+  Wallet,
+} from "lucide-react"
+import { Subscription } from "rxjs"
+import { toast } from "sonner"
 import { useAccount, useSwitchChain } from "wagmi"
 
 import { getMessages, Message } from "@/lib/openai"
 import { suaveChain } from "@/lib/suave"
-import { checkSubmission, submitPrompt } from "@/lib/suciphus"
+import { submitPrompt } from "@/lib/suciphus"
 import { removeQuotes } from "@/lib/utils"
 import { NakedTextArea } from "@/components/ui/textarea.naked"
 
 import AddCredits from "./add-credits"
+import { Financials } from "./financials"
 import { MessageCard } from "./message" // Import the new Message component
-import { useSuaveWallet } from "./suave-provider"
+
+import { Messages } from "./messages"
+import { Thread, useSuaveWallet } from "./suave-provider"
+import { Alert, AlertDescription, AlertTitle } from "./ui/alert"
 import { Button } from "./ui/button"
 import {
   Card,
@@ -26,6 +45,9 @@ import {
   CardTitle,
 } from "./ui/card"
 import { ScrollArea } from "./ui/scroll-area"
+import { Separator } from "./ui/separator"
+import { Skeleton } from "./ui/skeleton"
+import { Toaster } from "./ui/sonner"
 
 const ATTEMPTS_PER_ETH = 1000n
 
@@ -36,13 +58,21 @@ export interface PromptProps {
 
 export const Prompt = ({ className, threadId }: PromptProps) => {
   const router = useRouter()
-  const { suaveWallet, publicClient, creditBalance, threads, refreshBalance } =
-    useSuaveWallet()
+  const {
+    suaveWallet,
+    publicClient,
+    creditBalance,
+    threads,
+    refreshBalance,
+    updateThreads,
+    gameRound,
+    checkSubmission,
+    nonce,
+  } = useSuaveWallet()
   const { address, chainId } = useAccount()
   const { switchChain } = useSwitchChain()
 
   const [inputValue, setInputValue] = useState("")
-  const [prompts, setPrompts] = useState<string[]>([])
   const [messages, setMessages] = useState<Message[]>([])
   const [pendingTxs, setPendingTxs] = useState<Hash[]>([])
   const [fetchingMessages, setFetchingMessages] = useState(false)
@@ -52,10 +82,47 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
     runId: string
     threadId: string
   } | null>(null) // New state variable for lastRunId
+  const [currentThread, setCurrentThread] = useState<Thread | null>(null) // New state variable for currentThread
+  const [showSuccessAlert, setShowSuccessAlert] = useState(false)
+
+  const submissionSuccess$ = useOnSubmissionSuccess()
+  const promptSubmitted$ = useOnPromptSubmitted()
+
+  useEffect(() => {
+    const subscription: Subscription = promptSubmitted$.subscribe(
+      (logs: any) => {
+        console.log("promptSubmittedReceived logs:", logs)
+      }
+    )
+    return () => subscription.unsubscribe()
+  }, [promptSubmitted$])
+
+  useEffect(() => {
+    const subscription: Subscription = submissionSuccess$.subscribe(
+      (logs: any) => {
+        console.log("submissionSuccess Received logs:", logs)
+
+        setShowSuccessAlert(true)
+        setTimeout(() => {
+          setShowSuccessAlert(false)
+        }, 5000)
+        // Add any additional logic you want to execute after the submission
+
+        // Update currentThread success to true
+        setCurrentThread((prevThread) =>
+          prevThread ? { ...prevThread, success: true } : null
+        )
+      }
+    )
+
+    // Cleanup subscription on unmount
+    return () => subscription.unsubscribe()
+  }, [submissionSuccess$])
 
   useEffect(() => {
     if (messages.length > 0) {
       if (messagesEndRef.current) {
+        console.log("messagesEndRef.current")
         messagesEndRef.current.scrollIntoView({
           behavior: isInitialLoad ? "instant" : "smooth",
         })
@@ -66,20 +133,49 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
     }
   }, [messages])
 
+  const findAndSetCurrentThread = (threadId: string) => {
+    if (currentThread?.id !== threadId) {
+      const foundThread =
+        threads?.find((thread) => thread.id === threadId) || null
+      setCurrentThread(foundThread)
+    }
+  }
+
+  const fetchMessages = async () => {
+    setFetchingMessages(true)
+
+    getMessages(threadId)
+      .then((messages) => {
+        setMessages(messages)
+        setFetchingMessages(false)
+      })
+      .catch((error) => {
+        console.error("Failed to fetch messages:", error)
+        setFetchingMessages(false)
+      })
+  }
+
   useEffect(() => {
-    console.log({ threadId, threads })
     if (threadId && threadId !== "new") {
-      console.log({ threadId })
+      console.log("threadId changed fetching messages", threadId)
       fetchMessages()
+    }
+  }, [threadId])
+
+  useEffect(() => {
+    if (threadId && threadId !== "new") {
+      findAndSetCurrentThread(threadId)
     } else if (!threadId && threads?.length) {
-      router.push(`/player/${threads[0]}`)
+      router.push(`/player/${threads[0].id}`)
     }
   }, [threadId, threads])
 
   useEffect(() => {
     if (lastRun && lastRun.runId && lastRun.threadId) {
       pollGetLastMessage(lastRun.threadId, lastRun.runId).then((message) => {
+        console.log("pollGetLastMessage", { message })
         if (message) {
+          console.log("setMessages", { message })
           setMessages([message, ...messages])
         }
       })
@@ -87,7 +183,6 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
   }, [lastRun])
 
   const fetchPendingReceipts = async (txHashes: Hash[]) => {
-    console.debug("fetchPendingReceipts", { txHashes })
     if (publicClient) {
       console.debug("has publicClient")
       for (const txHash of txHashes) {
@@ -129,12 +224,28 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
                   )
 
                   // Update the URL without causing a page refresh
-                  router.replace(`/player/${decodedThreadId}`)
+                  window.history.replaceState(
+                    null,
+                    "",
+                    `${window.location.origin}/player/${decodedThreadId}`
+                  )
+
+                  // Check if the thread and run IDs already exist before updating
+                  if (
+                    !threads?.some((thread) => thread.id === decodedThreadId)
+                  ) {
+                    updateThreads?.(decodedThreadId, decodedRunId)
+                  }
 
                   setLastRun({
                     runId: decodedRunId,
                     threadId: decodedThreadId,
                   }) // Set the lastRunId state
+
+                  if (!currentThread) {
+                    console.log("setting currentThread", decodedThreadId)
+                    findAndSetCurrentThread(decodedThreadId)
+                  }
                 } else if (
                   decoded.eventName === "LogStrings" &&
                   "values" in decoded.args
@@ -153,20 +264,6 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
         }
       }
     }
-  }
-
-  const fetchMessages = async () => {
-    setFetchingMessages(true)
-
-    getMessages(threadId)
-      .then((messages) => {
-        setMessages(messages)
-        setFetchingMessages(false)
-      })
-      .catch((error) => {
-        console.error("Failed to fetch messages:", error)
-        setFetchingMessages(false)
-      })
   }
 
   const pollGetLastMessage = async (
@@ -202,24 +299,11 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
     setInputValue(event.target.value)
   }
 
-  const getUserNonce = async () => {
-    if (!publicClient) {
-      throw new Error("publicClient not initialized")
-    }
-    if (!address) {
-      throw new Error("wallet not initialized")
-    }
-    return await publicClient.getTransactionCount({
-      address,
-    })
-  }
-
   const handleKeyPress = async (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Enter") {
       if (!event.shiftKey) {
         event.preventDefault() // Prevent the default Enter key behavior (newline)
         if (inputValue.trim() !== "") {
-          setPrompts([...prompts, inputValue])
           setMessages([
             {
               role: "user",
@@ -238,7 +322,7 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
             console.log(address)
 
             // Compute nonce for the transaction
-            const nonce = await getUserNonce()
+            // const nonce = await getUserNonce()
             const escapedInputValue = JSON.stringify(inputValue).slice(1, -1)
 
             const hash = await submitPrompt({
@@ -257,8 +341,8 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
               setMessages((currentMessages) => [
                 {
                   ...currentMessages[0],
-                  status: "complete",
-                  runId: hash,
+                  status: "complete" as const,
+                  runId: "",
                 },
                 ...currentMessages.slice(1),
               ])
@@ -276,23 +360,19 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
   }
 
   useEffect(() => {
-    fetchPendingReceipts(pendingTxs)
+    if (pendingTxs.length > 0) {
+      console.log("fetchPendingReceipts", { pendingTxs })
+      fetchPendingReceipts(pendingTxs)
+    }
   }, [pendingTxs])
 
-  const isUserPrompt = (msg: string) => {
-    console.log({ prompts })
-    return prompts.includes(msg)
-  }
-
   const doCheckSubmission = async (runId: string) => {
-    if (suaveWallet && threadId) {
-      const nonce = await getUserNonce()
-      const txHash = await checkSubmission({
-        threadId: threadId,
-        suaveWallet,
-        nonce,
-      })
-      setPendingTxs([...pendingTxs, txHash])
+    if (suaveWallet && threadId && checkSubmission) {
+      const txHash = await checkSubmission(threadId, runId)
+      if (txHash !== "0x") {
+        console.log({ txHash })
+        setPendingTxs([...pendingTxs, txHash])
+      }
     } else {
       throw new Error(
         "undefined element(s) must be defined" +
@@ -302,88 +382,86 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
   }
 
   return (
-    <div className="flex h-full w-full flex-col justify-end">
+    <div className="relative flex h-full w-full flex-col justify-end">
+      <AnimatePresence>
+        {showSuccessAlert && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.5 }}
+            className="absolute left-0 top-0 z-20 w-full"
+          >
+            <Alert className="border-0 bg-gradient-to-r from-emerald-500/60 to-sky-600/60 hue-rotate-15 backdrop-blur-lg">
+              <Terminal className="h-4 w-4" />
+              <AlertTitle>Success! 🎉</AlertTitle>
+              <AlertDescription>You won the pot!</AlertDescription>
+            </Alert>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <div className="flex flex-col justify-end gap-4 ">
-        <ScrollArea className="h-[calc(100vh-20rem)]  p-8 ">
-          <div className="flex flex-col gap-6">
-            {fetchingMessages ? (
-              <div className="flex h-full w-full flex-col items-center justify-start gap-4">
-                <Loader strokeWidth={1} className="animate-spin" />
-                <div className="text-sm font-medium text-muted-foreground">
-                  Retrieving messages
-                </div>
-              </div>
-            ) : messages.length > 0 ? (
-              messages
-                .toReversed()
-                .map((message, idx) => (
-                  <MessageCard
-                    key={`key_${idx}`}
-                    message={message}
+        <LayoutGroup>
+          <AnimatePresence>
+            <ScrollArea className="h-[calc(100vh-20rem)]  p-8 ">
+              <div className="flex flex-col gap-6">
+                {fetchingMessages ? (
+                  <>
+                    <motion.div
+                      layout
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="ml-auto h-20 w-3/4 px-4 py-3"
+                    >
+                      <Skeleton />
+                    </motion.div>
+                    <motion.div
+                      layout
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="ml-6 h-32 w-3/4 px-4 py-3"
+                    >
+                      <Skeleton />
+                    </motion.div>
+                    <motion.div
+                      layout
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="ml-auto h-24 w-3/4 px-4 py-3"
+                    >
+                      <Skeleton />
+                    </motion.div>
+                  </>
+                ) : (
+                  <Messages
+                    messages={messages}
+                    address={address}
                     checkSubmission={doCheckSubmission}
-                    shouldCheckSubmission={
-                      message.role === "assistant" &&
-                      !!address &&
-                      message.content
-                        .toLowerCase()
-                        .includes(address.toLowerCase())
-                    }
                   />
-                ))
-            ) : (
-              <div className="flex h-full w-full flex-col items-center justify-start gap-4">
-                <h1 className="w-max scroll-m-20 bg-gradient-to-r from-fuchsia-700  to-indigo-700 bg-clip-text text-4xl font-extrabold tracking-tight text-transparent blur-[1px] lg:text-5xl ">
-                  Suciphus
-                </h1>
-                <p className="bg-gradient-to-l from-neutral-300 to-neutral-500 bg-clip-text px-2 text-xl font-medium text-transparent">
-                  Think you're smarter than AI?
-                </p>
-                <Card className="mt-20  w-9/12 bg-slate-900/80 shadow-2xl">
-                  <CardHeader className="text-center">
-                    <CardTitle className="text-xl">
-                      Enter your prompt to get started
-                    </CardTitle>
-                    <CardDescription>
-                      You can also use the command palette to enter your prompt
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex justify-between gap-8">
-                    <div className="flex w-full flex-col items-center gap-2">
-                      <Wallet className="h-8 w-8" />
-                      <p className="scroll-m-20 text-xl font-semibold tracking-tight text-primary/90">
-                        Connect
-                      </p>
-                      <p className="scroll-m-20 text-center text-sm font-semibold tracking-tight text-muted-foreground">
-                        Connect your wallet
-                      </p>
-                    </div>
-
-                    <div className="flex w-full flex-col items-center gap-2">
-                      <Gem className="h-8 w-8" />
-                      <p className="scroll-m-20 text-xl font-semibold tracking-tight text-primary/90">
-                        Fund
-                      </p>
-                      <p className="scroll-m-20 text-center text-sm font-semibold tracking-tight text-muted-foreground">
-                        Buy credits to submit prompts
-                      </p>
-                    </div>
-
-                    <div className="flex w-full flex-col items-center gap-2">
-                      <HandCoins className="h-8 w-8" />
-                      <p className="scroll-m-20 text-xl font-semibold tracking-tight text-primary/90">
-                        Earn
-                      </p>
-                      <p className="scroll-m-20 text-center text-sm font-semibold tracking-tight text-muted-foreground">
-                        Earn rewards by submitting prompts
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
+                )}
+                {messages.length > 0 && currentThread?.success && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    transition={{ duration: 0.5, delay: 0.7 }}
+                    className="w-full"
+                  >
+                    <Card className="w-full items-center border-0 bg-gradient-to-r from-emerald-500/60 to-sky-600/60 hue-rotate-15 backdrop-blur-lg">
+                      <CardHeader className="text-center">
+                        <CardTitle>Success 🎉</CardTitle>
+                        <CardDescription>You won the pot!</CardDescription>
+                      </CardHeader>
+                    </Card>
+                  </motion.div>
+                )}
+                <div ref={messagesEndRef} />
               </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-        </ScrollArea>
+            </ScrollArea>
+          </AnimatePresence>
+        </LayoutGroup>
 
         <div className="flex flex-col items-center gap-2">
           {chainId !== suaveChain.id ? (
@@ -412,16 +490,41 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
               </div>
             )
           )}
-          <Card className="flex min-h-16 w-full items-center justify-center bg-black/20 p-4 backdrop-blur-lg">
-            <NakedTextArea
-              disabled={!suaveWallet || creditBalance === 0n}
-              placeholder="Enter your prompt"
-              value={inputValue}
-              onChange={handleInputChange}
-              onKeyDown={handleKeyPress}
-              className="w-full resize-none bg-transparent"
-            />
-          </Card>
+
+          {threadId &&
+          threadId !== "new" &&
+          currentThread?.round !== gameRound ? (
+            <Card className="w-full border-0 bg-slate-800/90 backdrop-blur-lg">
+              <CardHeader>
+                <CardDescription>
+                  {fetchingMessages ? (
+                    <div className="flex h-full w-full items-center justify-start gap-2">
+                      <Loader
+                        strokeWidth={1}
+                        className="h-4 w-4 animate-spin"
+                      />
+                      <div className=" font-medium text-muted-foreground">
+                        Retrieving messages
+                      </div>
+                    </div>
+                  ) : (
+                    <>The round has been closed.</>
+                  )}
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          ) : (
+            <Card className="flex min-h-16 w-full items-center justify-center bg-black/20 p-4 backdrop-blur-lg">
+              <NakedTextArea
+                disabled={!suaveWallet || creditBalance === 0n}
+                placeholder="Enter your prompt"
+                value={inputValue}
+                onChange={handleInputChange}
+                onKeyDown={handleKeyPress}
+                className="w-full resize-none bg-transparent"
+              />
+            </Card>
+          )}
         </div>
       </div>
     </div>

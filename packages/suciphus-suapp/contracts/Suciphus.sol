@@ -61,6 +61,8 @@ contract Suciphus is Suapp, WithUtils {
 
     address private owner;
 
+    uint256 public currentPot; // New state variable to track the current pot value
+
     modifier onlyOwner() {
         require(msg.sender == owner, "Only the owner can call this function");
         _;
@@ -239,6 +241,9 @@ contract Suciphus is Suapp, WithUtils {
                 Thread({id: threadId, round: round, success: false, runId: ""})
             );
         }
+
+        // Update the current pot value
+        currentPot += requiredAmount;
     }
 
     function submitPrompt() public confidential returns (bytes memory) {
@@ -277,20 +282,25 @@ contract Suciphus is Suapp, WithUtils {
         return abi.encodeWithSelector(this.onReadMessages.selector);
     }
 
+    function getPotValue() public view returns (uint256) {
+        uint256 houseCut = Math.mulDiv(currentPot, HOUSE_CUT_PERCENTAGE, 100);
+        return currentPot - houseCut;
+    }
+
     function onCheckSubmission(
         bool containsPlayerAddress,
         address player,
         string memory threadId
     ) public emitOffchainLogs {
         if (containsPlayerAddress) {
-            uint256 balance = WETH.balanceOf(address(this));
-            uint256 houseCut = Math.mulDiv(balance, HOUSE_CUT_PERCENTAGE, 100);
-            uint256 amountToSend = balance - houseCut;
-
+            uint256 amountToSend = getPotValue();
             emit SuccessfulSubmission(msg.sender, amountToSend, round, season);
             WETH.transfer(player, amountToSend);
             // the round is autoclosed on succesful submission
             closeRound(threadId, player);
+
+            // Reset the current pot for the next round
+            currentPot = 0;
         } else {
             emit NothingHappened();
         }

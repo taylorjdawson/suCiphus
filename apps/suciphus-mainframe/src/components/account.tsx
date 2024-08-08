@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { AlertTriangle, Copy, Gem, HandCoins, LogOut } from "lucide-react"
 import { useAccount, useChainId, useDisconnect, useSwitchChain } from "wagmi"
@@ -37,8 +38,17 @@ export default function Account() {
   return (
     <div className="flex items-center gap-4">
       <Card className="flex h-full items-center space-x-2 p-2">
+        <HandCoins className="h-4 w-4" />
+        <div className="space-x-1">
+          <span className="text-center font-medium">{0}</span>
+          <span className="text-xs font-bold text-muted-foreground">TETH</span>
+        </div>
+      </Card>
+      <Card className="flex h-full items-center space-x-2 p-2">
         <Gem className="h-4 w-4" />
-        <span className="text-center">{creditBalance?.toString() ?? 0}</span>
+        <span className="text-center font-medium">
+          {creditBalance?.toString() ?? 0}
+        </span>
       </Card>
 
       <DropdownMenu>
