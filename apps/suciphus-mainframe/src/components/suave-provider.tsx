@@ -26,6 +26,7 @@ import { Subscribe } from "@react-rxjs/core"
 import { suciphus, weth } from "@repo/suciphus-suapp"
 import { useAccount, useTransactionCount } from "wagmi"
 
+import { suciphusAddress, wethAddress } from "@/config/app"
 import { suaveChain, suaveLocal } from "@/lib/suave"
 import {
   checkSubmission as checkSubmissionCall,
@@ -115,7 +116,7 @@ export const SuaveWalletProvider: React.FC<{ children: React.ReactNode }> = ({
   const fetchCreditBalance = async () => {
     if (suaveWallet && publicClient) {
       const newBalance = (await publicClient.readContract({
-        address: weth.address,
+        address: wethAddress,
         abi: weth.abi,
         functionName: "balanceOf",
         args: [address],
@@ -141,7 +142,7 @@ export const SuaveWalletProvider: React.FC<{ children: React.ReactNode }> = ({
   const fetchThreads = async () => {
     if (suaveWallet && publicClient && address) {
       const rawThreadIds = (await publicClient.readContract({
-        address: suciphus.address, // Replace with your contract's address
+        address: suciphusAddress, // Replace with your contract's address
         abi: suciphus.abi, // Replace with your contract's ABI
         functionName: "getThreadIdsByPlayer",
         args: [address],
@@ -176,7 +177,7 @@ export const SuaveWalletProvider: React.FC<{ children: React.ReactNode }> = ({
   const fetchCurrentRound = async () => {
     if (publicClient) {
       const round = (await publicClient.readContract({
-        address: suciphus.address,
+        address: suciphusAddress,
         abi: suciphus.abi,
         functionName: "getCurrentRound",
       })) as bigint
@@ -240,7 +241,7 @@ export const SuaveWalletProvider: React.FC<{ children: React.ReactNode }> = ({
       console.log("watching events")
       const unwatch = startWatchingEvents(
         publicClient,
-        suciphus.address,
+        suciphusAddress,
         address
       )
       return () => unwatch()

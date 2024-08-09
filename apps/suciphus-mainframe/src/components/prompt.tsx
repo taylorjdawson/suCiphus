@@ -57,16 +57,19 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
   const [fetchingMessages, setFetchingMessages] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [isInitialLoad, setIsInitialLoad] = useState(true)
-  const [lastRun, setLastRun] = useState<{
-    runId: string
-    threadId: string
-  } | null>(null)
+
   const { currentThread, setCurrentThread } = useCurrentThread()
 
   const [showSuccessAlert, setShowSuccessAlert] = useState(false)
 
   const submissionSuccess$ = useOnSubmissionSuccess()
   const promptSubmitted$ = useOnPromptSubmitted()
+
+  useEffect(() => {
+    if (!currentThread && threadId === "new") {
+      setMessages([])
+    }
+  }, [currentThread])
 
   useEffect(() => {
     const subscription: Subscription = promptSubmitted$.subscribe(
@@ -85,6 +88,7 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
 
         pollGetLastMessage(decodedThreadId, decodedRunId).then((message) => {
           if (message) {
+            console.log("setting messages", message)
             setMessages((prevMessages) => {
               const newMessages = [message, ...prevMessages]
 

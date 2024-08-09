@@ -5,6 +5,8 @@ import { Subject } from "rxjs"
 import { filter } from "rxjs/operators"
 import { Address } from "viem"
 
+import { wethAddress } from "@/config/app"
+
 // Define the type for SuccessfulSubmission event logs
 interface SuccessfulSubmissionLog {
   eventName: "SuccessfulSubmission"
@@ -50,7 +52,7 @@ export const startWatchingEvents = (
   })
 
   const unwatchDeposit = publicClient.watchEvent({
-    address: weth.address,
+    address: wethAddress,
     event: parseAbiItem("event Deposit(address indexed dst, uint wad)"),
     onLogs: (logs) => {
       console.log("onLogs Deposit", logs)
