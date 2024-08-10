@@ -53,7 +53,27 @@ export const MessageCard: React.FC<MessageCardProps> = ({
           className={` break-words border-0 px-4  py-3 text-sm backdrop-blur-lg ${message.role === "user" ? " bg-muted-foreground/50" : "bg-card/50"} ${message.status === "pending" ? "animate-pulse" : ""}`}
         >
           {message.role === "user" ? (
-            <p>{message.content}</p>
+            <Markdown
+              components={{
+                p: ({ children }) => (
+                  <p className="leading-7 [&:not(:first-child)]:mt-6">
+                    {children}
+                  </p>
+                ),
+                ol: ({ children }) => (
+                  <ol className="my-6 ml-6 list-decimal [&>li]:mt-2">
+                    {children}
+                  </ol>
+                ),
+                pre: ({ children }) => (
+                  <pre className="whitespace-pre-wrap break-all">
+                    {children}
+                  </pre>
+                ),
+              }}
+            >
+              {message.content}
+            </Markdown>
           ) : (
             <Markdown
               components={{

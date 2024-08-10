@@ -77,6 +77,7 @@ export const SuaveWalletProvider: React.FC<{ children: React.ReactNode }> = ({
   const [selectedRound, setSelectedRound] = useState<number>()
   const [potValue, setPotValue] = useState<bigint>(0n)
   const [checkingSubmission, setCheckingSubmission] = useState(false)
+  const [chainIsConnected, setChainIsConnected] = useState(false)
 
   const submissionSuccess$ = useOnSubmissionSuccess() // Add this line
   const contractEvent$ = useContractEvents() // Add this line
@@ -108,6 +109,14 @@ export const SuaveWalletProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [address, chain])
 
   useEffect(() => {
+    if (chain?.id === suaveChain.id) {
+      setChainIsConnected(true)
+    } else {
+      setChainIsConnected(false)
+    }
+  }, [chain])
+
+  useEffect(() => {
     if (publicClient && address) {
       publicClient.getTransactionCount({ address }).then(setNonce)
     }
@@ -132,8 +141,10 @@ export const SuaveWalletProvider: React.FC<{ children: React.ReactNode }> = ({
   }
 
   useEffect(() => {
-    fetchCreditBalance()
-  }, [suaveWallet, publicClient])
+    if (chainIsConnected) {
+      fetchCreditBalance()
+    }
+  }, [suaveWallet, publicClient, chainIsConnected])
 
   const refreshBalance = async () => {
     await fetchCreditBalance()
@@ -168,8 +179,18 @@ export const SuaveWalletProvider: React.FC<{ children: React.ReactNode }> = ({
   }
 
   useEffect(() => {
-    fetchThreads()
-  }, [suaveWallet, publicClient, address, selectedRound])
+    if (chainIsConnected) {
+      fetchPotValue() // Initial fetch
+      const interval = setInterval(fetchPotValue, 6000) // Update every 6 seconds
+      return () => clearInterval(interval) // Cleanup on unmount
+    }
+  }, [publicClient, chainIsConnected])
+
+  useEffect(() => {
+    if (chainIsConnected) {
+      fetchThreads()
+    }
+  }, [suaveWallet, publicClient, address, selectedRound, chainIsConnected])
 
   /**
    * Fetches the current round from the contract.
@@ -186,8 +207,10 @@ export const SuaveWalletProvider: React.FC<{ children: React.ReactNode }> = ({
   }
 
   useEffect(() => {
-    fetchCurrentRound()
-  }, [publicClient])
+    if (chainIsConnected) {
+      fetchCurrentRound()
+    }
+  }, [publicClient, chainIsConnected])
 
   /**
    * Purchases credits by minting tokens.
@@ -217,10 +240,18 @@ export const SuaveWalletProvider: React.FC<{ children: React.ReactNode }> = ({
    * @param {Thread} newThread - The new thread to add.
    */
   const updateThreads = (id: string, runId: string) => {
-    setThreads((prevThreads) => [
-      { id, runId, round: gameRound || 0, success: false },
-      ...prevThreads,
-    ])
+    setThreads((prevThreads) => {
+      // Check if the thread already exists
+      const threadExists = prevThreads.some((thread) => thread.id === id)
+      if (threadExists) {
+        return prevThreads // Return the existing threads if the thread already exists
+      }
+      // Add the new thread if it doesn't exist
+      return [
+        ...prevThreads,
+        { id, runId, round: gameRound || 0, success: false },
+      ]
+    })
   }
 
   const fetchPotValue = async () => {
@@ -229,12 +260,6 @@ export const SuaveWalletProvider: React.FC<{ children: React.ReactNode }> = ({
       setPotValue(value)
     }
   }
-
-  useEffect(() => {
-    fetchPotValue() // Initial fetch
-    const interval = setInterval(fetchPotValue, 6000) // Update every 6 seconds
-    return () => clearInterval(interval) // Cleanup on unmount
-  }, [publicClient])
 
   useEffect(() => {
     if (publicClient && address) {
