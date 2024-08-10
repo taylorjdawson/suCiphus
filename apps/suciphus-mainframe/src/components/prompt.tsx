@@ -46,7 +46,6 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
     updateThreads,
     gameRound,
     checkSubmission,
-    nonce,
   } = useSuaveWallet()
   const { address, chainId } = useAccount()
   const { switchChain } = useSwitchChain()
@@ -61,66 +60,15 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
   const { currentThread, setCurrentThread } = useCurrentThread()
 
   const [showSuccessAlert, setShowSuccessAlert] = useState(false)
+  const [showLoader, setShowLoader] = useState(false)
 
   const submissionSuccess$ = useOnSubmissionSuccess()
-  const promptSubmitted$ = useOnPromptSubmitted()
 
   useEffect(() => {
     if (!currentThread && threadId === "new") {
       setMessages([])
     }
   }, [currentThread])
-
-  useEffect(() => {
-    const subscription: Subscription = promptSubmitted$.subscribe(
-      (logs: any) => {
-        console.log("promptSubmittedReceived logs:", logs)
-
-        const decodedRunId = removeQuotes(logs.args.runId as string)
-        const decodedThreadId = removeQuotes(logs.args.threadId as string)
-
-        // Update the URL without causing a page refresh
-        window.history.replaceState(
-          null,
-          "",
-          `${window.location.origin}/player/${decodedThreadId}`
-        )
-
-        pollGetLastMessage(decodedThreadId, decodedRunId).then((message) => {
-          if (message) {
-            console.log("setting messages", message)
-            setMessages((prevMessages) => {
-              const newMessages = [message, ...prevMessages]
-
-              return newMessages
-            })
-          }
-        })
-
-        // Check if the thread and run IDs already exist before updating
-        if (!threads?.some((thread) => thread.id === decodedThreadId)) {
-          updateThreads?.(decodedThreadId, decodedRunId)
-        }
-
-        if (!currentThread) {
-          setCurrentThread({
-            id: decodedThreadId,
-            runId: decodedRunId,
-            success: false,
-            round: gameRound || 0,
-          })
-        }
-      }
-    )
-    return () => subscription.unsubscribe()
-  }, [
-    promptSubmitted$,
-    threads,
-    updateThreads,
-    currentThread,
-    gameRound,
-    setCurrentThread,
-  ])
 
   useEffect(() => {
     const subscription: Subscription = submissionSuccess$.subscribe(
@@ -203,18 +151,6 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
     }
   }, [threadId, threads])
 
-  const fetchPendingReceipts = async (txHashes: Hash[]) => {
-    if (publicClient) {
-      console.debug("has publicClient")
-      for (const txHash of txHashes) {
-        console.debug("txHash", txHash, pendingTxs)
-        if (pendingTxs.includes(txHash)) {
-          setPendingTxs((prev) => prev.filter((hash) => hash !== txHash))
-        }
-      }
-    }
-  }
-
   const pollGetLastMessage = async (
     threadId: string,
     runId: string,
@@ -232,14 +168,17 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
           return pollGetLastMessage(threadId, runId, attempt + 1) // Recurse with incremented attempt counter
         } else {
           console.log("Max retries reached, stopping poll.")
+          setShowLoader(false) // Hide loader after max attempts
           return undefined // Return undefined after max attempts
         }
       } else {
         // Return the last message if it is not pending
+        setShowLoader(false) // Hide loader when a new message is received
         return messages[0]
       }
     } catch (error) {
       console.error("Error polling for last message:", error)
+      setShowLoader(false) // Hide loader in case of error
       return undefined // Return undefined in case of error
     }
   }
@@ -273,11 +212,13 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
             // Compute nonce for the transaction
             // const nonce = await getUserNonce()
             const escapedInputValue = JSON.stringify(inputValue).slice(1, -1)
+            const nonce = await publicClient.getTransactionCount({ address })
+            console.log("nonce", nonce)
             const hash = await submitPrompt({
               prompt: escapedInputValue,
               threadId: currentThread?.id || "",
               suaveWallet,
-              nonce: await publicClient.getTransactionCount({ address }),
+              nonce,
             }).catch((error) => {
               console.error("error submitting prompt", error)
               setMessages(messages)
@@ -286,6 +227,9 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
 
             if (hash !== "0x") {
               console.debug("tx hash", hash)
+
+              setShowLoader(true) // Show loader when a pending hash is received
+              setTimeout(() => setShowLoader(false), 15000) // Hide loader after 15 seconds if no message is received
               setMessages((currentMessages) => [
                 {
                   ...currentMessages[0],
@@ -297,6 +241,53 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
 
               setPendingTxs((currentTxs) => [...currentTxs, hash])
               refreshBalance?.()
+              publicClient
+                .waitForTransactionReceipt({ hash })
+                .then((transaction) => {
+                  const logs = transaction.logs[0]
+                  const decodedLog = decodeEventLog({
+                    abi: suciphus.abi,
+                    topics: logs.topics,
+                    data: logs.data,
+                  })
+
+                  // @ts-ignore
+                  const decodedThreadId = decodedLog.args.threadId.replace(
+                    /"/g,
+                    ""
+                  )
+                  // @ts-ignore
+                  const decodedRunId = decodedLog.args.runId.replace(/"/g, "")
+
+                  // Update the URL without causing a page refresh
+                  window.history.replaceState(
+                    null,
+                    "",
+                    `${window.location.origin}/player/${decodedThreadId}`
+                  )
+                  if (!currentThread) {
+                    setCurrentThread({
+                      id: decodedThreadId,
+                      runId: decodedRunId,
+                      success: false,
+                      round: gameRound || 0,
+                    })
+                  }
+                  updateThreads?.(decodedThreadId, decodedRunId)
+
+                  pollGetLastMessage(decodedThreadId, decodedRunId).then(
+                    (message) => {
+                      if (message) {
+                        console.debug("setting messages", message)
+                        setMessages((prevMessages) => {
+                          const newMessages = [message, ...prevMessages]
+
+                          return newMessages
+                        })
+                      }
+                    }
+                  )
+                })
             }
           }
         }
@@ -310,7 +301,7 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
   useEffect(() => {
     if (pendingTxs.length > 0) {
       console.log("fetchPendingReceipts", { pendingTxs })
-      fetchPendingReceipts(pendingTxs)
+      // fetchPendingReceipts(pendingTxs)
     }
   }, [pendingTxs])
 
@@ -390,6 +381,23 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
                     checkSubmission={doCheckSubmission}
                   />
                 )}
+                {showLoader && (
+                  <div className="flex w-full ">
+                    <span className="animate-bounce  ">
+                      <span className="animate-pulse duration-1000  ">•</span>
+                    </span>
+                    <span className="animate-bounce delay-200">
+                      <span className="animate-pulse delay-200 duration-1000">
+                        •
+                      </span>
+                    </span>
+                    <span className=" animate-bounce delay-300">
+                      <span className="animate-pulse delay-300 duration-1000">
+                        •
+                      </span>
+                    </span>
+                  </div>
+                )}
                 {messages.length > 0 && currentThread?.success && (
                   <motion.div
                     initial={{ opacity: 0, height: 0 }}
@@ -464,7 +472,7 @@ export const Prompt = ({ className, threadId }: PromptProps) => {
               </CardHeader>
             </Card>
           ) : (
-            <Card className="flex min-h-16 w-full items-center justify-center bg-black/20 p-4 backdrop-blur-lg">
+            <Card className="flex min-h-16 w-full items-center justify-center border-black/10  bg-black bg-opacity-20 p-4  shadow-xl backdrop-blur-lg focus-within:bg-opacity-30  focus-within:shadow-2xl">
               <NakedTextArea
                 disabled={!suaveWallet || creditBalance === 0n}
                 placeholder="Enter your prompt"

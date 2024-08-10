@@ -240,10 +240,18 @@ export const SuaveWalletProvider: React.FC<{ children: React.ReactNode }> = ({
    * @param {Thread} newThread - The new thread to add.
    */
   const updateThreads = (id: string, runId: string) => {
-    setThreads((prevThreads) => [
-      { id, runId, round: gameRound || 0, success: false },
-      ...prevThreads,
-    ])
+    setThreads((prevThreads) => {
+      // Check if the thread already exists
+      const threadExists = prevThreads.some((thread) => thread.id === id)
+      if (threadExists) {
+        return prevThreads // Return the existing threads if the thread already exists
+      }
+      // Add the new thread if it doesn't exist
+      return [
+        ...prevThreads,
+        { id, runId, round: gameRound || 0, success: false },
+      ]
+    })
   }
 
   const fetchPotValue = async () => {

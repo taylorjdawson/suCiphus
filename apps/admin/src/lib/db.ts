@@ -42,7 +42,9 @@ export const getThreads = async (
 ): Promise<Thread.Thread[]> => {
   try {
     const supabase = getClient()
-    const query = supabase.from("threads").select("*")
+    const query = supabase.from("threads").select("*").order("created_at", {
+      ascending: false,
+    })
     if (threadId) {
       query.eq("id", threadId)
     }

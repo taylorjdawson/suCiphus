@@ -88,9 +88,9 @@ export default function Threads() {
         <Button variant="outline" onClick={addNewThread} className="w-full">
           <PlusCircle className="mr-2 h-4 w-4" /> New thread
         </Button>
-        <ScrollArea className="flex max-h-96 w-min">
+        <ScrollArea className="flex h-96 w-min">
           <div className="flex flex-col gap-2">
-            {threadsByRound.currentRound.map((thread) => (
+            {threadsByRound.currentRound.toReversed().map((thread) => (
               <Button
                 variant="ghost" // Conditional variant
                 asChild
